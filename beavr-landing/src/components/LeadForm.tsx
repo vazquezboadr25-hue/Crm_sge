@@ -29,10 +29,10 @@ export default function LeadForm() {
         }),
       });
 
-      const payload = await response.json();
+      const payload: { error?: string } = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload.error || "No se pudo enviar el formulario");
+        throw new Error(payload.error || "No se pudo enviar el formulario. Inténtalo de nuevo.");
       }
 
       setState("success");
