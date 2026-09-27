@@ -49,7 +49,12 @@ export default function LeadForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+    <form onSubmit={onSubmit} className="lead-form space-y-4" noValidate>
+      <div className="lead-form-intro">
+        <p className="lead-form-kicker">Empieza aquí</p>
+        <h3 className="lead-form-title">Cuéntanos tu proyecto</h3>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-beavr-deep">Nombre</span>
@@ -110,8 +115,8 @@ export default function LeadForm() {
         />
       </label>
 
-      <button type="submit" className="btn-accent w-full sm:w-auto" disabled={state === "loading"}>
-        {state === "loading" ? "Enviando..." : "Enviar mensaje"}
+      <button type="submit" className="btn-accent w-full" disabled={state === "loading"}>
+        {state === "loading" ? "Enviando..." : "Enviar y hablar con beavr"}
       </button>
 
       {message ? (
