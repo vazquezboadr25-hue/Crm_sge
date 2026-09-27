@@ -8,6 +8,7 @@ import { CrmSummary } from "@/components/CrmSummary";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EmployeeEditor, type Employee, type EmployeeFormValues } from "@/components/EmployeeDialogs";
 import { EntityLogo } from "@/components/EntityLogo";
+import { uploadCompanyLogo } from "@/lib/crm/companyLogo";
 import { formatPrice } from "@/lib/crm/money";
 import {
   STAGE_COLORS,
@@ -45,6 +46,7 @@ type SupabaseOpportunity = {
 };
 
 type SortMode = "default" | "az" | "za";
+type EmployeeSortMode = SortMode | "company";
 
 const supabase = createSupabaseBrowserClient();
 
@@ -85,14 +87,16 @@ function resolveView(vista: string | null): "summary" | "opportunities" | "peopl
   }
 }
 
-function SortControls({
+function SortControls<T extends string = SortMode>({
   value,
   onChange,
   label,
+  extraOptions = [],
 }: {
-  value: SortMode;
-  onChange: (value: SortMode) => void;
+  value: T;
+  onChange: (value: T) => void;
   label: string;
+  extraOptions?: { value: T; label: string }[];
 }) {
   return (
     <div className="sort-controls" role="group" aria-label={label}>
@@ -100,24 +104,34 @@ function SortControls({
       <button
         type="button"
         className={`sort-chip ${value === "default" ? "active" : ""}`}
-        onClick={() => onChange("default")}
+        onClick={() => onChange("default" as T)}
       >
         Por defecto
       </button>
       <button
         type="button"
         className={`sort-chip ${value === "az" ? "active" : ""}`}
-        onClick={() => onChange("az")}
+        onClick={() => onChange("az" as T)}
       >
         A → Z
       </button>
       <button
         type="button"
         className={`sort-chip ${value === "za" ? "active" : ""}`}
-        onClick={() => onChange("za")}
+        onClick={() => onChange("za" as T)}
       >
         Z → A
       </button>
+      {extraOptions.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          className={`sort-chip ${value === option.value ? "active" : ""}`}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -134,7 +148,7 @@ function HomeContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [employeesSearch, setEmployeesSearch] = useState("");
   const [companiesSearch, setCompaniesSearch] = useState("");
-  const [employeesSort, setEmployeesSort] = useState<SortMode>("default");
+  const [employeesSort, setEmployeesSort] = useState<EmployeeSortMode>("default");
   const [companiesSort, setCompaniesSort] = useState<SortMode>("default");
   const [companyEditorOpen, setCompanyEditorOpen] = useState(false);
   const [employeeEditorOpen, setEmployeeEditorOpen] = useState(false);
@@ -189,6 +203,8 @@ function HomeContent() {
         sector: company.sector ?? null,
         sitio_web: company.sitio_web ?? null,
         notas: company.notas ?? null,
+        logo_url: company.logo_url ?? null,
+        responsable_id: company.responsable_id ?? null,
         created_at: company.created_at,
         updated_at: company.updated_at,
       })),
@@ -215,12 +231,12 @@ function HomeContent() {
 
         return {
           id: row.id,
-          nombre: row.nombre ?? linkedPerson?.nombre ?? "Sin nombre",
+          nombre: linkedPerson?.nombre ?? row.nombre ?? "Sin nombre",
           empresa,
           empresa_id: row.empresa_id ?? null,
           persona_id: row.persona_id ?? null,
           proyecto: row.proyecto ?? "Sin proyecto",
-          email: row.correo ?? linkedPerson?.email ?? "Sin email",
+          email: linkedPerson?.email ?? row.correo ?? "Sin email",
           detalles: row.detalles ?? "Sin detalles",
           precio: row.precio != null ? Number(row.precio) : null,
           estado: normalizeStage(row.estado as string | null | undefined),
@@ -297,6 +313,14 @@ function HomeContent() {
     if (employeesSort === "za") {
       return [...list].sort((a, b) => b.nombre.localeCompare(a.nombre, "es"));
     }
+    if (employeesSort === "company") {
+      return [...list].sort((a, b) => {
+        if (a.empresa && !b.empresa) return -1;
+        if (!a.empresa && b.empresa) return 1;
+        const byCompany = (a.empresa ?? "").localeCompare(b.empresa ?? "", "es", { sensitivity: "base" });
+        return byCompany || a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" });
+      });
+    }
     return list;
   }, [employeeRecords, empresaRecords, employeesSearch, employeesSort]);
 
@@ -330,23 +354,44 @@ function HomeContent() {
 
   const handleSaveCompany = async (values: CompanyFormValues) => {
     setSaving(true);
-    const { error } = await supabase.from("empresas").insert({
-      nombre: values.nombre,
-      nif: values.nif || null,
-      sector: values.sector || null,
-      sitio_web: values.sitio_web || null,
-      notas: values.notas || null,
-    });
-    setSaving(false);
+    const { data, error } = await supabase
+      .from("empresas")
+      .insert({
+        nombre: values.nombre,
+        nif: values.nif || null,
+        sector: values.sector || null,
+        sitio_web: values.sitio_web || null,
+        notas: values.notas || null,
+      })
+      .select("id")
+      .single();
 
-    if (error) {
+    if (error || !data) {
+      setSaving(false);
       console.error("Error guardando empresa:", error);
       setNotice({ type: "error", text: "No se ha podido guardar la empresa. Inténtalo de nuevo." });
       return;
     }
 
+    let logoFailed = false;
+    if (values.logoFile) {
+      try {
+        const logoUrl = await uploadCompanyLogo(supabase, data.id, values.logoFile);
+        const { error: logoError } = await supabase.from("empresas").update({ logo_url: logoUrl }).eq("id", data.id);
+        if (logoError) throw logoError;
+      } catch (logoError) {
+        console.error("Error subiendo logo:", logoError);
+        logoFailed = true;
+      }
+    }
+    setSaving(false);
+
     setCompanyEditorOpen(false);
-    setNotice({ type: "success", text: `Empresa «${values.nombre}» añadida.` });
+    setNotice(
+      logoFailed
+        ? { type: "error", text: `Empresa «${values.nombre}» añadida, pero no se ha podido subir el logo.` }
+        : { type: "success", text: `Empresa «${values.nombre}» añadida.` },
+    );
     fetchData();
   };
 
@@ -541,7 +586,12 @@ function HomeContent() {
                 aria-label="Buscar empleados"
               />
             </div>
-            <SortControls value={employeesSort} onChange={setEmployeesSort} label="Orden de empleados" />
+            <SortControls
+              value={employeesSort}
+              onChange={setEmployeesSort}
+              label="Orden de empleados"
+              extraOptions={[{ value: "company", label: "Por empresa" }]}
+            />
           </div>
 
           {loading ? (
@@ -610,7 +660,7 @@ function HomeContent() {
             <div className="entity-select-grid">
               {filteredCompanies.map((company) => (
                 <Link key={company.id} href={`/empresas/${company.id}`} className="entity-select-card">
-                  <EntityLogo name={company.nombre} />
+                  <EntityLogo name={company.nombre} logoUrl={company.logo_url} />
                   <div className="entity-select-copy">
                     <strong>{company.nombre}</strong>
                   </div>

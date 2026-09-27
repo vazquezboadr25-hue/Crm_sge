@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Modal, formatDate } from "@/components/Modal";
+import { CloseButton, Modal, formatDate } from "@/components/Modal";
 
 export type Employee = {
   id: string;
@@ -108,9 +108,7 @@ export function EmployeeEditor({
           <div className="detail-label">{isNew ? "Nuevo empleado" : "Editar empleado"}</div>
           <h3 id="employee-editor-title">{isNew ? "Añadir un empleado" : employee.nombre}</h3>
         </div>
-        <button type="button" className="detail-close" onClick={onClose} aria-label="Cerrar sin guardar">
-          ×
-        </button>
+        <CloseButton label="Cerrar sin guardar" onClick={onClose} />
       </div>
 
       <form className="company-form" onSubmit={handleSubmit} noValidate>
@@ -259,9 +257,7 @@ export function DeleteEmployeeDialog({
           <div className="detail-label">Eliminar empleado</div>
           <h3 id="employee-delete-title">¿Eliminar a «{employee.nombre}»?</h3>
         </div>
-        <button type="button" className="detail-close" onClick={onClose} aria-label="Cancelar">
-          ×
-        </button>
+        <CloseButton label="Cancelar" onClick={onClose} />
       </div>
 
       <div className="modal-warning" role="alert">

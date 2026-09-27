@@ -36,7 +36,7 @@ export default function OpportunityDetailPage() {
   const [company, setCompany] = useState<{ id: string; nombre: string } | null>(null);
   const [employee, setEmployee] = useState<{ id: string; nombre: string; email: string | null } | null>(null);
   const [companies, setCompanies] = useState<Array<{ id: string; nombre: string }>>([]);
-  const [employees, setEmployees] = useState<Array<{ id: string; nombre: string; empresa_id: string | null }>>([]);
+  const [employees, setEmployees] = useState<Array<{ id: string; nombre: string; email: string | null; empresa_id: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,7 +50,7 @@ export default function OpportunityDetailPage() {
     const [oppResult, companiesResult, employeesResult] = await Promise.all([
       supabase.from("oportunidades").select("*").eq("id", opportunityId).maybeSingle(),
       supabase.from("empresas").select("id, nombre").order("nombre", { ascending: true }),
-      supabase.from("personas").select("id, nombre, empresa_id").order("nombre", { ascending: true }),
+      supabase.from("personas").select("id, nombre, email, empresa_id").order("nombre", { ascending: true }),
     ]);
 
     if (oppResult.error || !oppResult.data) {
@@ -84,6 +84,11 @@ export default function OpportunityDetailPage() {
         : Promise.resolve({ data: null, error: null }),
     ]);
 
+    if (employeeResult.data) {
+      detail.nombre = employeeResult.data.nombre ?? detail.nombre;
+      detail.correo = employeeResult.data.email ?? detail.correo;
+    }
+
     setNotFound(false);
     setOpportunity(detail);
     setCompanies(
@@ -96,6 +101,7 @@ export default function OpportunityDetailPage() {
       (employeesResult.data ?? []).map((row) => ({
         id: row.id,
         nombre: row.nombre ?? "Sin nombre",
+        email: row.email ?? null,
         empresa_id: row.empresa_id ?? null,
       })),
     );
@@ -268,7 +274,7 @@ export default function OpportunityDetailPage() {
               <div>
                 <dt>Correo</dt>
                 <dd>
-                  <a href={`mailto:${opportunity.correo}`}>{opportunity.correo}</a>
+                  <span className="contact-email">{opportunity.correo}</span>
                 </dd>
               </div>
               <div>

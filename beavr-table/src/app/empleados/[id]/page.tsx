@@ -51,7 +51,7 @@ export default function EmployeeDetailPage() {
 
     const [employeeResult, companiesResult, emailsResult, opportunitiesResult] = await Promise.all([
       supabase.from("personas").select("*").eq("id", employeeId).maybeSingle(),
-      supabase.from("empresas").select("id, nombre, nif, sector, sitio_web, notas, created_at, updated_at").order("nombre"),
+      supabase.from("empresas").select("id, nombre, nif, sector, sitio_web, notas, logo_url, responsable_id, created_at, updated_at").order("nombre"),
       supabase.from("personas").select("id, email"),
       supabase
         .from("oportunidades")
@@ -93,6 +93,8 @@ export default function EmployeeDetailPage() {
             sector: companyRow.sector ?? null,
             sitio_web: companyRow.sitio_web ?? null,
             notas: companyRow.notas ?? null,
+            logo_url: companyRow.logo_url ?? null,
+            responsable_id: companyRow.responsable_id ?? null,
             created_at: companyRow.created_at,
             updated_at: companyRow.updated_at,
           }
@@ -107,8 +109,8 @@ export default function EmployeeDetailPage() {
     setOpportunities(
       (opportunitiesResult.data ?? []).map((row) => ({
         id: row.id,
-        nombre: row.nombre ?? "Sin nombre",
-        correo: row.correo ?? "Sin correo",
+        nombre: employeeData.nombre,
+        correo: employeeData.email ?? row.correo ?? "Sin correo",
         proyecto: row.proyecto ?? "Sin proyecto",
         detalles: row.detalles ?? "",
         precio: row.precio != null ? Number(row.precio) : null,
@@ -247,7 +249,7 @@ export default function EmployeeDetailPage() {
               <div>
                 <dt>Correo</dt>
                 <dd>
-                  {employee.email ? <a href={`mailto:${employee.email}`}>{employee.email}</a> : "—"}
+                  {employee.email ? <span className="contact-email">{employee.email}</span> : "—"}
                 </dd>
               </div>
               <div>

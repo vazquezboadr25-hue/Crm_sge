@@ -12,6 +12,16 @@ export function formatDate(dateIso: string) {
   });
 }
 
+export function CloseButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="detail-close" onClick={onClick} aria-label={label}>
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      </svg>
+    </button>
+  );
+}
+
 export function Modal({
   titleId,
   onClose,

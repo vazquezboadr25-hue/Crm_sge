@@ -16,6 +16,8 @@ type SummaryOpportunity = {
   creado_en: string;
 };
 
+const RECENT_LIMIT = 5;
+
 export function CrmSummary({
   opportunities,
   loading,
@@ -42,6 +44,13 @@ export function CrmSummary({
   const abiertas = total - cerradas;
   const winRate = cerradas ? Math.round((ganadas / cerradas) * 100) : 0;
   const maxCount = Math.max(...STAGE_ORDER.map((stage) => counts[stage]), 1);
+
+  const sumPrice = (items: SummaryOpportunity[]) =>
+    items.reduce((acc, opp) => acc + (Number(opp.precio) || 0), 0);
+  const priced = opportunities.filter((opp) => opp.precio !== null && Number.isFinite(Number(opp.precio)));
+  const openValue = sumPrice(opportunities.filter((opp) => opp.estado !== "won" && opp.estado !== "lost"));
+  const wonValue = sumPrice(opportunities.filter((opp) => opp.estado === "won"));
+  const averageTicket = priced.length ? sumPrice(priced) / priced.length : null;
 
   const donutSegments = STAGE_ORDER.map((stage) => ({
     stage,
@@ -80,8 +89,10 @@ export function CrmSummary({
       </div>
 
       <div className="crm-charts-grid">
-        <article className="detail-card">
-          <h3>Embudo por estado</h3>
+        <article className="detail-card crm-card">
+          <div className="crm-card-header">
+            <h3>Embudo por estado</h3>
+          </div>
           {loading ? (
             <div className="empty-column">Cargando...</div>
           ) : total === 0 ? (
@@ -90,15 +101,18 @@ export function CrmSummary({
             <div className="crm-bar-chart" role="img" aria-label="Gráfico de barras por estado">
               {STAGE_ORDER.map((stage) => {
                 const value = counts[stage];
-                const height = Math.max(8, Math.round((value / maxCount) * 140));
+                const height = Math.max(3, Math.round((value / maxCount) * 100));
                 return (
                   <div key={stage} className="crm-bar-item">
-                    <div className="crm-bar-value">{value}</div>
-                    <div
-                      className="crm-bar"
-                      style={{ height: `${height}px`, background: STAGE_COLORS[stage].bar }}
-                      title={`${STAGE_LABELS[stage]}: ${value}`}
-                    />
+                    <div className="crm-bar-track">
+                      <div
+                        className="crm-bar"
+                        style={{ height: `${height}%`, background: STAGE_COLORS[stage].bar }}
+                        title={`${STAGE_LABELS[stage]}: ${value}`}
+                      >
+                        <span className="crm-bar-value">{value}</span>
+                      </div>
+                    </div>
                     <div className="crm-bar-label">{STAGE_LABELS[stage]}</div>
                   </div>
                 );
@@ -107,8 +121,10 @@ export function CrmSummary({
           )}
         </article>
 
-        <article className="detail-card">
-          <h3>Distribución</h3>
+        <article className="detail-card crm-card">
+          <div className="crm-card-header">
+            <h3>Distribución</h3>
+          </div>
           {loading ? (
             <div className="empty-column">Cargando...</div>
           ) : total === 0 ? (
@@ -157,67 +173,90 @@ export function CrmSummary({
         </article>
       </div>
 
-      <article className="detail-card crm-outcome-card">
-        <h3>Resultado de negociaciones</h3>
-        <div className="crm-outcome crm-outcome-compact">
-          <div className="crm-outcome-track" aria-hidden="true">
-            <div
-              className="crm-outcome-won"
-              style={{ width: cerradas ? `${(ganadas / cerradas) * 100}%` : "0%" }}
-            />
-            <div
-              className="crm-outcome-lost"
-              style={{ width: cerradas ? `${(perdidas / cerradas) * 100}%` : "0%" }}
-            />
+      <div className="crm-charts-grid">
+        <article className="detail-card crm-card crm-outcome-card">
+          <div className="crm-card-header">
+            <h3>Resultado de negociaciones</h3>
           </div>
-          <div className="crm-outcome-labels">
-            <span>
-              <strong style={{ color: STAGE_COLORS.won.bar }}>{ganadas}</strong> ganadas
-            </span>
-            <span>
-              <strong style={{ color: STAGE_COLORS.lost.bar }}>{perdidas}</strong> perdidas
-            </span>
-            <span className="crm-outcome-rate">
-              {cerradas ? `Éxito ${winRate}%` : "Sin cierres aún"}
-            </span>
+          <div className="crm-outcome">
+            <div className="crm-outcome-hero">
+              <strong>{cerradas ? `${winRate}%` : "—"}</strong>
+              <span>{cerradas ? "Tasa de éxito en negociaciones cerradas" : "Sin cierres aún"}</span>
+            </div>
+            <div className="crm-outcome-track" aria-hidden="true">
+              <div
+                className="crm-outcome-won"
+                style={{ width: cerradas ? `${(ganadas / cerradas) * 100}%` : "0%" }}
+              />
+              <div
+                className="crm-outcome-lost"
+                style={{ width: cerradas ? `${(perdidas / cerradas) * 100}%` : "0%" }}
+              />
+            </div>
+            <div className="crm-outcome-labels">
+              <span>
+                <strong style={{ color: STAGE_COLORS.won.bar }}>{ganadas}</strong> ganadas
+              </span>
+              <span>
+                <strong style={{ color: STAGE_COLORS.lost.bar }}>{perdidas}</strong> perdidas
+              </span>
+              <span>
+                <strong>{abiertas}</strong> abiertas
+              </span>
+            </div>
+            <dl className="crm-value-grid">
+              <div>
+                <dt>En negociación</dt>
+                <dd>{formatPrice(openValue)}</dd>
+              </div>
+              <div>
+                <dt>Valor ganado</dt>
+                <dd style={{ color: STAGE_COLORS.won.bar }}>{formatPrice(wonValue)}</dd>
+              </div>
+              <div>
+                <dt>Ticket medio</dt>
+                <dd>{formatPrice(averageTicket !== null ? Math.round(averageTicket) : null) ?? "—"}</dd>
+              </div>
+            </dl>
           </div>
-        </div>
-      </article>
+        </article>
 
-      <article className="detail-card crm-recent-card">
-        <div className="summary-panel-header" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-          <h3 style={{ margin: 0 }}>Últimas negociaciones</h3>
-          <Link href="/?vista=oportunidades" className="back-link">
-            Ver todas →
-          </Link>
-        </div>
+        <article className="detail-card crm-card crm-recent-card">
+          <div className="crm-card-header">
+            <h3>Últimas negociaciones</h3>
+            <Link href="/?vista=oportunidades" className="back-link">
+              Ver todas →
+            </Link>
+          </div>
 
-        {loading ? (
-          <div className="empty-column">Cargando...</div>
-        ) : opportunities.length ? (
-          <div className="crm-recent-list">
-            {opportunities.slice(0, 4).map((opp) => (
-              <Link key={opp.id} href={`/oportunidades/${opp.id}`} className="crm-recent-item">
-                <div className="crm-recent-main">
-                  <strong>{opp.nombre}</strong>
+          {loading ? (
+            <div className="empty-column">Cargando...</div>
+          ) : opportunities.length ? (
+            <div className="crm-recent-list">
+              {opportunities.slice(0, RECENT_LIMIT).map((opp) => (
+                <Link key={opp.id} href={`/oportunidades/${opp.id}`} className="crm-recent-item">
+                  <div className="crm-recent-main">
+                    <strong>{opp.nombre}</strong>
+                    <span>{opp.empresa || opp.proyecto || opp.email}</span>
+                  </div>
                   <span className="crm-recent-price">{formatPrice(opp.precio) ?? "Sin precio"}</span>
-                </div>
-                <span
-                  className="status-pill"
-                  style={{
-                    background: STAGE_COLORS[opp.estado].background,
-                    color: STAGE_COLORS[opp.estado].color,
-                  }}
-                >
-                  {STAGE_LABELS[opp.estado]}
-                </span>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-column">No hay oportunidades todavía</div>
-        )}
-      </article>
+                  <span
+                    className="status-pill"
+                    style={{
+                      background: STAGE_COLORS[opp.estado].background,
+                      color: STAGE_COLORS[opp.estado].color,
+                    }}
+                  >
+                    {STAGE_LABELS[opp.estado]}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-column">No hay oportunidades todavía</div>
+          )}
+        </article>
+      </div>
     </section>
   );
 }

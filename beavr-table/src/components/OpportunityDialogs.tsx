@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Modal } from "@/components/Modal";
+import { CloseButton, Modal } from "@/components/Modal";
 import { STAGE_LABELS, STAGE_ORDER, type Stage } from "@/lib/crm/stages";
 import { parsePriceInput } from "@/lib/crm/money";
 
@@ -42,7 +42,7 @@ export function OpportunityEditor({
 }: {
   opportunity: OpportunityRecord;
   companies: Array<{ id: string; nombre: string }>;
-  employees: Array<{ id: string; nombre: string; empresa_id: string | null }>;
+  employees: Array<{ id: string; nombre: string; email?: string | null; empresa_id: string | null }>;
   saving: boolean;
   onSave: (values: OpportunityFormValues) => void;
   onClose: () => void;
@@ -67,6 +67,11 @@ export function OpportunityEditor({
   const filteredEmployees = values.empresa_id
     ? employees.filter((employee) => !employee.empresa_id || employee.empresa_id === values.empresa_id)
     : employees;
+  const linkedEmployee = values.persona_id
+    ? employees.find((employee) => employee.id === values.persona_id) ?? null
+    : null;
+  const contactName = linkedEmployee ? linkedEmployee.nombre : values.nombre;
+  const contactEmail = linkedEmployee ? linkedEmployee.email || values.correo : values.correo;
 
   const update = (field: keyof OpportunityFormValues, value: string) => {
     setValues((current) => {
@@ -87,8 +92,8 @@ export function OpportunityEditor({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
 
-    const nombre = values.nombre.trim();
-    const correo = values.correo.trim().toLowerCase();
+    const nombre = contactName.trim();
+    const correo = contactEmail.trim().toLowerCase();
     const proyecto = values.proyecto.trim();
     const precio = parsePriceInput(values.precio);
     const nextErrors: typeof errors = {};
@@ -121,9 +126,7 @@ export function OpportunityEditor({
           <div className="detail-label">Editar oportunidad</div>
           <h3 id="opportunity-editor-title">{opportunity.proyecto}</h3>
         </div>
-        <button type="button" className="detail-close" onClick={onClose} aria-label="Cerrar sin guardar">
-          ×
-        </button>
+        <CloseButton label="Cerrar sin guardar" onClick={onClose} />
       </div>
 
       <form className="company-form" onSubmit={handleSubmit} noValidate>
@@ -164,10 +167,17 @@ export function OpportunityEditor({
             <input
               id="opp-nombre"
               type="text"
-              value={values.nombre}
+              value={contactName}
               onChange={(event) => update("nombre", event.target.value)}
+              readOnly={Boolean(linkedEmployee)}
+              aria-describedby={linkedEmployee ? "opp-contacto-hint" : undefined}
               className={errors.nombre ? "is-invalid" : ""}
             />
+            {linkedEmployee && (
+              <p id="opp-contacto-hint" className="form-help">
+                Se toma del empleado vinculado
+              </p>
+            )}
             {errors.nombre && <p className="form-error">{errors.nombre}</p>}
           </div>
           <div className="form-field">
@@ -177,8 +187,10 @@ export function OpportunityEditor({
             <input
               id="opp-correo"
               type="email"
-              value={values.correo}
+              value={contactEmail}
               onChange={(event) => update("correo", event.target.value)}
+              readOnly={Boolean(linkedEmployee)}
+              aria-describedby={linkedEmployee ? "opp-contacto-hint" : undefined}
               className={errors.correo ? "is-invalid" : ""}
             />
             {errors.correo && <p className="form-error">{errors.correo}</p>}
@@ -262,9 +274,7 @@ export function DeleteOpportunityDialog({
           <div className="detail-label">Eliminar oportunidad</div>
           <h3 id="opportunity-delete-title">¿Eliminar «{opportunity.proyecto}»?</h3>
         </div>
-        <button type="button" className="detail-close" onClick={onClose} aria-label="Cancelar">
-          ×
-        </button>
+        <CloseButton label="Cancelar" onClick={onClose} />
       </div>
 
       <div className="modal-warning" role="alert">
