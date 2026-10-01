@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Syne } from "next/font/google";
+import { AuthGate, AuthProvider } from "@/components/AuthProvider";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const display = Syne({
@@ -15,18 +17,38 @@ const body = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "beavr — Diseño de pantallas y frontends",
-  description:
-    "Diseñamos pantallas, interfaces y frontends para productos digitales. Habla con beavr sobre tu próximo proyecto.",
+  title: "beavr CRM",
+  description: "CRM profesional para gestionar oportunidades, empresas y empleados.",
   icons: {
     icon: "/logo-mark.png",
   },
 };
 
+const themeInitScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem("beavr-crm-theme");
+    const theme = stored === "light" || stored === "dark"
+      ? stored
+      : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch (_) {}
+})();
+`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${display.variable} ${body.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans text-beavr">{children}</body>
+    <html lang="es" className={`${display.variable} ${body.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="min-h-full flex flex-col font-sans">
+        <ThemeProvider>
+          <AuthProvider>
+            <AuthGate>{children}</AuthGate>
+          </AuthProvider>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

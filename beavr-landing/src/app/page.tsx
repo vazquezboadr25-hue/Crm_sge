@@ -1,8 +1,19 @@
 import Image from "next/image";
 import LeadForm from "@/components/LeadForm";
 import ProcessTrack from "@/components/ProcessTrack";
+import FxEffects from "@/components/FxEffects";
 import Reveal from "@/components/Reveal";
 import ScreenComposition from "@/components/ScreenComposition";
+
+const headline = "Pantallas que se entienden a la primera".split(" ");
+const marqueeItems = [
+  "Diseño de pantallas",
+  "Frontend de apps",
+  "Páginas web",
+  "Sistemas de diseño",
+  "Prototipos",
+  "Accesibilidad",
+];
 
 const services = [
   {
@@ -22,6 +33,7 @@ const services = [
 export default function Home() {
   return (
     <>
+      <FxEffects />
       <header className="site-header">
         <div className="page-shell flex items-center justify-between py-4 sm:py-5">
           <a href="#top" className="brand-link" aria-label="beavr inicio">
@@ -56,8 +68,14 @@ export default function Home() {
           <div className="page-shell grid w-full items-center gap-10 pb-16 pt-2 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:pb-20">
             <div className="mx-auto w-full max-w-2xl lg:mx-0 lg:max-w-none">
               <p className="brand-signal animate-rise">beavr</p>
-              <h1 className="animate-rise-delay-1 mt-3 max-w-[14ch] text-4xl font-bold leading-[1.02] text-beavr-deep sm:text-5xl xl:text-6xl 2xl:text-[4.1rem]">
-                Pantallas que se entienden a la primera
+              <h1 className="mt-3 max-w-[14ch] text-4xl font-bold leading-[1.02] text-beavr-deep sm:text-5xl xl:text-6xl 2xl:text-[4.1rem]">
+                {headline.map((word, index) => (
+                  <span key={index}>
+                    <span className="hw" style={{ "--w": index } as React.CSSProperties}>
+                      <span>{word}</span>
+                    </span>{" "}
+                  </span>
+                ))}
               </h1>
               <p className="animate-rise-delay-2 mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
                 Diseñamos interfaces y construimos frontends para apps y webs con claridad,
@@ -78,6 +96,18 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <div className="marquee" aria-hidden="true">
+          <div className="marquee-track">
+            {[0, 1].map((group) => (
+              <div key={group} className="marquee-group">
+                {marqueeItems.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
 
         <section id="servicios" className="section-product border-t border-line">
           <div className="page-shell section-pad">

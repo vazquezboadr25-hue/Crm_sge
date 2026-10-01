@@ -11,6 +11,7 @@ export type Employee = {
   cargo: string | null;
   telefono: string | null;
   notas: string | null;
+  es_interno: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -29,23 +30,28 @@ const phonePattern = /^\+?[\d\s().-]{6,}$/;
 
 export function EmployeeEditor({
   employee,
-  companies,
+  companies = [],
   existingEmails,
   saving,
+  mode = "internal",
+  lockedCompanyId,
   onSave,
   onClose,
 }: {
   employee: Employee | null;
-  companies: Array<{ id: string; nombre: string }>;
+  companies?: Array<{ id: string; nombre: string }>;
   existingEmails: string[];
   saving: boolean;
+  mode?: "internal" | "contact";
+  lockedCompanyId?: string | null;
   onSave: (values: EmployeeFormValues) => void;
   onClose: () => void;
 }) {
+  const isInternal = mode === "internal";
   const [values, setValues] = useState<EmployeeFormValues>({
     nombre: employee?.nombre ?? "",
     email: employee?.email ?? "",
-    empresa_id: employee?.empresa_id ?? "",
+    empresa_id: lockedCompanyId ?? employee?.empresa_id ?? "",
     cargo: employee?.cargo ?? "",
     telefono: employee?.telefono ?? "",
     notas: employee?.notas ?? "",
@@ -58,6 +64,7 @@ export function EmployeeEditor({
   }, []);
 
   const isNew = employee === null;
+  const titleNoun = "empleado";
 
   const update = (field: keyof EmployeeFormValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -73,14 +80,14 @@ export function EmployeeEditor({
     const nextErrors: typeof errors = {};
 
     if (!nombre) {
-      nextErrors.nombre = "Escribe el nombre del empleado.";
+      nextErrors.nombre = `Escribe el nombre del ${titleNoun}.`;
     }
 
     if (email) {
       if (!emailPattern.test(email)) {
         nextErrors.email = "Escribe un correo válido, por ejemplo: nombre@empresa.com";
       } else if (existingEmails.some((existing) => existing.trim().toLowerCase() === email)) {
-        nextErrors.email = "Ya hay otro empleado con este correo.";
+        nextErrors.email = "Ya hay otra persona con este correo.";
       }
     }
 
@@ -94,7 +101,7 @@ export function EmployeeEditor({
     onSave({
       nombre,
       email,
-      empresa_id: values.empresa_id,
+      empresa_id: isInternal ? "" : lockedCompanyId || values.empresa_id,
       cargo: values.cargo.trim(),
       telefono,
       notas: values.notas.trim(),
@@ -105,8 +112,8 @@ export function EmployeeEditor({
     <Modal titleId="employee-editor-title" onClose={onClose}>
       <div className="modal-header">
         <div>
-          <div className="detail-label">{isNew ? "Nuevo empleado" : "Editar empleado"}</div>
-          <h3 id="employee-editor-title">{isNew ? "Añadir un empleado" : employee.nombre}</h3>
+          <div className="detail-label">{isNew ? "Nuevo empleado" : "Editar"}</div>
+          <h3 id="employee-editor-title">{isNew ? "Añadir empleado" : employee.nombre}</h3>
         </div>
         <CloseButton label="Cerrar sin guardar" onClick={onClose} />
       </div>
@@ -134,21 +141,26 @@ export function EmployeeEditor({
           )}
         </div>
 
-        <div className="form-field">
-          <label htmlFor="employee-empresa">Empresa</label>
-          <select
-            id="employee-empresa"
-            value={values.empresa_id}
-            onChange={(event) => update("empresa_id", event.target.value)}
-          >
-            <option value="">Sin empresa</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!isInternal && !lockedCompanyId ? (
+          <div className="form-field">
+            <label htmlFor="employee-empresa">Empresa</label>
+            <select
+              id="employee-empresa"
+              value={values.empresa_id}
+              onChange={(event) => update("empresa_id", event.target.value)}
+              aria-invalid={Boolean(errors.empresa_id)}
+              className={errors.empresa_id ? "is-invalid" : ""}
+            >
+              <option value="">Sin empresa</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.nombre}
+                </option>
+              ))}
+            </select>
+            {errors.empresa_id && <p className="form-error">{errors.empresa_id}</p>}
+          </div>
+        ) : null}
 
         <div className="form-field">
           <label htmlFor="employee-cargo">Cargo</label>
@@ -158,6 +170,7 @@ export function EmployeeEditor({
             autoComplete="off"
             value={values.cargo}
             onChange={(event) => update("cargo", event.target.value)}
+            placeholder="Ej. Responsable de compras"
           />
         </div>
 
@@ -229,7 +242,7 @@ export function EmployeeEditor({
             Cancelar
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? "Guardando..." : isNew ? "Añadir empleado" : "Guardar cambios"}
+            {saving ? "Guardando..." : isNew ? "Añadir" : "Guardar cambios"}
           </button>
         </div>
       </form>
@@ -254,7 +267,7 @@ export function DeleteEmployeeDialog({
     <Modal titleId="employee-delete-title" onClose={onClose}>
       <div className="modal-header">
         <div>
-          <div className="detail-label">Eliminar empleado</div>
+          <div className="detail-label">Eliminar</div>
           <h3 id="employee-delete-title">¿Eliminar a «{employee.nombre}»?</h3>
         </div>
         <CloseButton label="Cancelar" onClick={onClose} />
@@ -268,7 +281,7 @@ export function DeleteEmployeeDialog({
         <p className="modal-text">
           {opportunitiesCount === 1 ? "1 oportunidad" : `${opportunitiesCount} oportunidades`} no se{" "}
           {opportunitiesCount === 1 ? "borrará" : "borrarán"}, pero {opportunitiesCount === 1 ? "quedará" : "quedarán"}{" "}
-          <strong>sin empleado asignado</strong>.
+          <strong>sin persona asignada</strong>.
         </p>
       )}
 
@@ -277,7 +290,7 @@ export function DeleteEmployeeDialog({
           Cancelar
         </button>
         <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={deleting}>
-          {deleting ? "Eliminando..." : "Sí, eliminar empleado"}
+          {deleting ? "Eliminando..." : "Sí, eliminar"}
         </button>
       </div>
     </Modal>

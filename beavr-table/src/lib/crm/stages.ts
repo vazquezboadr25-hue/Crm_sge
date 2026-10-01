@@ -2,19 +2,18 @@ export type Stage = "new" | "contacted" | "proposal" | "won" | "lost";
 
 export const STAGE_LABELS: Record<Stage, string> = {
   new: "Nueva",
-  contacted: "Contactada",
-  proposal: "Propuesta",
+  contacted: "Propuesta",
+  proposal: "Negociación",
   won: "Ganada",
   lost: "Perdida",
 };
 
-/** Colores primarios/básicos por estado de negociación */
 export const STAGE_COLORS: Record<Stage, { background: string; color: string; bar: string }> = {
-  new: { background: "#dbeafe", color: "#1d4ed8", bar: "#2563eb" },
-  contacted: { background: "#e5e7eb", color: "#374151", bar: "#6b7280" },
-  proposal: { background: "#fef3c7", color: "#b45309", bar: "#f59e0b" },
-  won: { background: "#dcfce7", color: "#15803d", bar: "#22c55e" },
-  lost: { background: "#fee2e2", color: "#b91c1c", bar: "#ef4444" },
+  new: { background: "#3b82f6", color: "#ffffff", bar: "#3b82f6" },
+  contacted: { background: "#8b5cf6", color: "#ffffff", bar: "#8b5cf6" },
+  proposal: { background: "#f97316", color: "#ffffff", bar: "#f97316" },
+  won: { background: "#16a34a", color: "#ffffff", bar: "#22c55e" },
+  lost: { background: "#dc2626", color: "#ffffff", bar: "#ef4444" },
 };
 
 export const STAGE_ORDER: Stage[] = ["new", "contacted", "proposal", "won", "lost"];
@@ -31,6 +30,8 @@ export function normalizeStage(value: string | null | undefined): Stage {
       return "contacted";
     case "propuesta":
     case "proposal":
+    case "negociacion":
+    case "negociación":
       return "proposal";
     case "ganada":
     case "won":

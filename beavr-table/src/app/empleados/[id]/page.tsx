@@ -51,7 +51,10 @@ export default function EmployeeDetailPage() {
 
     const [employeeResult, companiesResult, emailsResult, opportunitiesResult] = await Promise.all([
       supabase.from("personas").select("*").eq("id", employeeId).maybeSingle(),
-      supabase.from("empresas").select("id, nombre, nif, sector, sitio_web, notas, logo_url, responsable_id, created_at, updated_at").order("nombre"),
+      supabase
+        .from("empresas")
+        .select("id, nombre, nif, sector, sitio_web, notas, logo_url, responsable_id, created_at, updated_at")
+        .order("nombre"),
       supabase.from("personas").select("id, email"),
       supabase
         .from("oportunidades")
@@ -76,6 +79,7 @@ export default function EmployeeDetailPage() {
       cargo: person.cargo ?? null,
       telefono: person.telefono ?? null,
       notas: person.notas ?? null,
+      es_interno: Boolean(person.es_interno),
       created_at: person.created_at,
       updated_at: person.updated_at,
     };
@@ -144,6 +148,7 @@ export default function EmployeeDetailPage() {
         cargo: values.cargo || null,
         telefono: values.telefono || null,
         notas: values.notas || null,
+        es_interno: false,
       })
       .eq("id", employee.id);
     setSaving(false);
@@ -224,7 +229,7 @@ export default function EmployeeDetailPage() {
           <EntityLogo name={employee.nombre} size="lg" />
           <div className="entity-hero-copy">
             <h2>{employee.nombre}</h2>
-            {employee.cargo && <span className="company-sector">{employee.cargo}</span>}
+            {employee.cargo ? <span className="company-sector">{employee.cargo}</span> : null}
           </div>
         </section>
 
@@ -235,11 +240,7 @@ export default function EmployeeDetailPage() {
               <div>
                 <dt>Empresa</dt>
                 <dd>
-                  {company ? (
-                    <Link href={`/empresas/${company.id}`}>{company.nombre}</Link>
-                  ) : (
-                    "—"
-                  )}
+                  {company ? <Link href={`/empresas/${company.id}`}>{company.nombre}</Link> : "—"}
                 </dd>
               </div>
               <div>
@@ -312,6 +313,7 @@ export default function EmployeeDetailPage() {
           companies={companies}
           existingEmails={existingEmails}
           saving={saving}
+          mode="contact"
           onSave={handleSave}
           onClose={() => setEditorOpen(false)}
         />

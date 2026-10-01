@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { CompanyEditor, type Company, type CompanyFormValues } from "@/components/CompanyDialogs";
 import { CrmSummary } from "@/components/CrmSummary";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -154,9 +154,10 @@ function HomeContent() {
   const [employeeEditorOpen, setEmployeeEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const skipRealtimeRefresh = useRef(0);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) setLoading(true);
 
     const [companiesResult, peopleResult, opportunitiesResult] = await Promise.all([
       supabase.from("empresas").select("*").order("created_at", { ascending: true }),
@@ -177,7 +178,7 @@ function HomeContent() {
       setOpportunities([]);
       setEmpresaRecords([]);
       setEmployeeRecords([]);
-      setLoading(false);
+      if (!silent) setLoading(false);
       return;
     }
 
@@ -218,6 +219,7 @@ function HomeContent() {
         cargo: person.cargo ?? null,
         telefono: person.telefono ?? null,
         notas: person.notas ?? null,
+        es_interno: Boolean(person.es_interno),
         created_at: person.created_at,
         updated_at: person.updated_at,
       })),
@@ -246,7 +248,7 @@ function HomeContent() {
     );
 
     setOpportunities(mapped);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   useEffect(() => {
@@ -258,7 +260,11 @@ function HomeContent() {
         "postgres_changes",
         { event: "*", schema: "public", table: "oportunidades" },
         () => {
-          fetchData();
+          if (skipRealtimeRefresh.current > 0) {
+            skipRealtimeRefresh.current -= 1;
+            return;
+          }
+          fetchData({ silent: true });
         },
       )
       .subscribe();
@@ -346,6 +352,25 @@ function HomeContent() {
     return list;
   }, [empresaRecords, employeeRecords, companiesSearch, companiesSort]);
 
+  const stageValues = useMemo(() => {
+    return STAGE_ORDER.reduce(
+      (acc, stage) => {
+        acc[stage] = (grouped[stage] ?? []).reduce((sum, opp) => sum + (Number(opp.precio) || 0), 0);
+        return acc;
+      },
+      {} as Record<Stage, number>,
+    );
+  }, [grouped]);
+
+  const employeeCountByCompany = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const employee of employeeRecords) {
+      if (!employee.empresa_id) continue;
+      map.set(employee.empresa_id, (map.get(employee.empresa_id) ?? 0) + 1);
+    }
+    return map;
+  }, [employeeRecords]);
+
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 5000);
@@ -404,6 +429,7 @@ function HomeContent() {
       cargo: values.cargo || null,
       telefono: values.telefono || null,
       notas: values.notas || null,
+      es_interno: false,
     });
     setSaving(false);
 
@@ -430,29 +456,44 @@ function HomeContent() {
   const handleDrop = async (nextStage: Stage) => {
     if (!draggedId) return;
 
+    const movedId = draggedId;
+    const previous = opportunities;
     const nextOpportunities = opportunities.map((opp) =>
-      opp.id === draggedId ? { ...opp, estado: nextStage } : opp,
+      opp.id === movedId ? { ...opp, estado: nextStage } : opp,
     );
     setOpportunities(nextOpportunities);
     setDraggedId(null);
 
-    const { error } = await supabase.from("oportunidades").update({ estado: nextStage }).eq("id", draggedId);
+    skipRealtimeRefresh.current += 1;
+    const { error } = await supabase.from("oportunidades").update({ estado: nextStage }).eq("id", movedId);
 
     if (error) {
       console.error("Error actualizando estado:", error);
-      fetchData();
+      skipRealtimeRefresh.current = Math.max(0, skipRealtimeRefresh.current - 1);
+      setOpportunities(previous);
     }
   };
 
   const titles = {
-    summary: { title: "Resumen", subtitle: "Estadísticas de negociaciones" },
-    opportunities: { title: "Oportunidades", subtitle: "Pulsa una oportunidad para ver su ficha" },
-    people: { title: "Empleados", subtitle: "Pulsa un empleado para ver su ficha" },
-    companies: { title: "Empresas", subtitle: "Pulsa una empresa para ver su ficha" },
+    summary: { title: "Resumen", subtitle: "Visión general del pipeline comercial" },
+    opportunities: { title: "Oportunidades", subtitle: "Pipeline de negociaciones activas" },
+    people: { title: "Empleados", subtitle: "Contactos de las empresas" },
+    companies: { title: "Empresas", subtitle: "Cartera de cuentas y clientes" },
   } as const;
 
+  const navCounts = {
+    summary: opportunities.length,
+    opportunities: opportunities.length,
+    people: employeeRecords.length,
+    companies: empresaRecords.length,
+  };
+
   return (
-    <DashboardShell title={titles[activeView].title} subtitle={titles[activeView].subtitle}>
+    <DashboardShell
+      title={titles[activeView].title}
+      subtitle={titles[activeView].subtitle}
+      counts={navCounts}
+    >
       {activeView === "summary" && (
         <CrmSummary
           opportunities={opportunities}
@@ -475,29 +516,31 @@ function HomeContent() {
             </article>
             <article className="stat-card">
               <div className="stat-number">{empresas}</div>
-              <div className="stat-label">Empresas</div>
+              <div className="stat-label">Empresas en pipeline</div>
             </article>
             <article className="stat-card">
               <div className="stat-number">{ultima}</div>
-              <div className="stat-label">Última</div>
+              <div className="stat-label">Última actividad</div>
             </article>
           </section>
 
-          <section className="board-toolbar" aria-label="Herramientas del tablero">
-            <div className="search-box">
-              <span className="search-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="11" cy="11" r="5.5" stroke="currentColor" strokeWidth="1.8" />
-                  <path d="M16.2 16.2L20 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Buscar proyecto o empresa..."
-                aria-label="Buscar oportunidad"
-              />
+          <section className="crm-toolbar" aria-label="Herramientas del tablero">
+            <div className="crm-toolbar-left">
+              <div className="search-box">
+                <span className="search-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="11" cy="11" r="5.5" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M16.2 16.2L20 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Buscar proyecto, persona o empresa..."
+                  aria-label="Buscar oportunidad"
+                />
+              </div>
             </div>
           </section>
 
@@ -513,6 +556,7 @@ function HomeContent() {
                   <h3>{column.label}</h3>
                   <span>{grouped[column.key]?.length ?? 0}</span>
                 </div>
+                <span className="board-column-value">{formatPrice(stageValues[column.key]) ?? "—"}</span>
 
                 {loading ? (
                   <div className="empty-column">Cargando...</div>
@@ -557,126 +601,193 @@ function HomeContent() {
       )}
 
       {activeView === "people" && (
-        <section className="directory-section" aria-label="Empleados">
-          <div className="directory-header">
-            <div className="directory-title">
-              <h3>Empleados</h3>
-              <span>{filteredEmployees.length}</span>
-            </div>
-            <button type="button" className="btn btn-primary" onClick={() => setEmployeeEditorOpen(true)}>
-              + Añadir empleado
-            </button>
-          </div>
-
+        <section aria-label="Empleados">
           {noticeBanner}
 
-          <div className="directory-tools">
-            <div className="directory-search-box">
-              <span className="search-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="11" cy="11" r="5.5" stroke="currentColor" strokeWidth="1.8" />
-                  <path d="M16.2 16.2L20 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                value={employeesSearch}
-                onChange={(event) => setEmployeesSearch(event.target.value)}
-                placeholder="Buscar empleado, cargo, correo o empresa..."
-                aria-label="Buscar empleados"
+          <div className="crm-toolbar">
+            <div className="crm-toolbar-left">
+              <div className="directory-search-box search-box">
+                <span className="search-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="11" cy="11" r="5.5" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M16.2 16.2L20 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  value={employeesSearch}
+                  onChange={(event) => setEmployeesSearch(event.target.value)}
+                  placeholder="Buscar empleado, cargo, correo o empresa..."
+                  aria-label="Buscar empleados"
+                />
+              </div>
+              <SortControls
+                value={employeesSort}
+                onChange={setEmployeesSort}
+                label="Orden de empleados"
+                extraOptions={[{ value: "company", label: "Por empresa" }]}
               />
             </div>
-            <SortControls
-              value={employeesSort}
-              onChange={setEmployeesSort}
-              label="Orden de empleados"
-              extraOptions={[{ value: "company", label: "Por empresa" }]}
-            />
-          </div>
-
-          {loading ? (
-            <div className="empty-column">Cargando...</div>
-          ) : filteredEmployees.length ? (
-            <div className="entity-select-grid">
-              {filteredEmployees.map((employee) => (
-                <Link key={employee.id} href={`/empleados/${employee.id}`} className="entity-select-card">
-                  <EntityLogo name={employee.nombre} />
-                  <div className="entity-select-copy">
-                    <strong>{employee.nombre}</strong>
-                    <span>{employee.empresa || "Sin empresa"}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : employeesSearch.trim() ? (
-            <div className="empty-column">Ningún empleado coincide con la búsqueda</div>
-          ) : (
-            <div className="empty-state">
-              <p>Todavía no hay empleados registrados.</p>
+            <div className="crm-toolbar-actions">
               <button type="button" className="btn btn-primary" onClick={() => setEmployeeEditorOpen(true)}>
-                + Añadir el primer empleado
+                + Nuevo empleado
               </button>
             </div>
-          )}
+          </div>
+
+          <div className="crm-table-wrap">
+            <table className="crm-table">
+              <thead>
+                <tr>
+                  <th>Empleado</th>
+                  <th>Empresa</th>
+                  <th>Cargo</th>
+                  <th>Email</th>
+                  <th>Teléfono</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="crm-table-empty">
+                      Cargando...
+                    </td>
+                  </tr>
+                ) : filteredEmployees.length ? (
+                  filteredEmployees.map((employee) => (
+                    <tr key={employee.id}>
+                      <td>
+                        <Link href={`/empleados/${employee.id}`} className="crm-table-link">
+                          <EntityLogo name={employee.nombre} size="sm" />
+                          <span>{employee.nombre}</span>
+                        </Link>
+                      </td>
+                      <td className="crm-table-muted">
+                        {employee.empresa_id ? (
+                          <Link href={`/empresas/${employee.empresa_id}`} className="crm-table-link">
+                            {employee.empresa || "—"}
+                          </Link>
+                        ) : (
+                          employee.empresa || "—"
+                        )}
+                      </td>
+                      <td className="crm-table-muted">{employee.cargo || "—"}</td>
+                      <td className="crm-table-muted">{employee.email || "—"}</td>
+                      <td className="crm-table-muted">{employee.telefono || "—"}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="crm-table-empty">
+                      {employeesSearch.trim()
+                        ? "Ningún empleado coincide con la búsqueda"
+                        : "Todavía no hay empleados registrados."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 
       {activeView === "companies" && (
-        <section className="directory-section" aria-label="Empresas">
-          <div className="directory-header">
-            <div className="directory-title">
-              <h3>Empresas</h3>
-              <span>{filteredCompanies.length}</span>
-            </div>
-            <button type="button" className="btn btn-primary" onClick={() => setCompanyEditorOpen(true)}>
-              + Añadir empresa
-            </button>
-          </div>
-
+        <section aria-label="Empresas">
           {noticeBanner}
 
-          <div className="directory-tools">
-            <div className="directory-search-box">
-              <span className="search-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="11" cy="11" r="5.5" stroke="currentColor" strokeWidth="1.8" />
-                  <path d="M16.2 16.2L20 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                value={companiesSearch}
-                onChange={(event) => setCompaniesSearch(event.target.value)}
-                placeholder="Buscar empresa, NIF, sector o empleado..."
-                aria-label="Buscar empresas"
-              />
+          <div className="crm-toolbar">
+            <div className="crm-toolbar-left">
+              <div className="directory-search-box search-box">
+                <span className="search-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="11" cy="11" r="5.5" stroke="currentColor" strokeWidth="1.8" />
+                    <path d="M16.2 16.2L20 20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  value={companiesSearch}
+                  onChange={(event) => setCompaniesSearch(event.target.value)}
+                  placeholder="Buscar empresa, NIF, sector o empleado..."
+                  aria-label="Buscar empresas"
+                />
+              </div>
+              <SortControls value={companiesSort} onChange={setCompaniesSort} label="Orden de empresas" />
             </div>
-            <SortControls value={companiesSort} onChange={setCompaniesSort} label="Orden de empresas" />
-          </div>
-
-          {loading ? (
-            <div className="empty-column">Cargando...</div>
-          ) : filteredCompanies.length ? (
-            <div className="entity-select-grid">
-              {filteredCompanies.map((company) => (
-                <Link key={company.id} href={`/empresas/${company.id}`} className="entity-select-card">
-                  <EntityLogo name={company.nombre} logoUrl={company.logo_url} />
-                  <div className="entity-select-copy">
-                    <strong>{company.nombre}</strong>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : companiesSearch.trim() ? (
-            <div className="empty-column">Ninguna empresa coincide con la búsqueda</div>
-          ) : (
-            <div className="empty-state">
-              <p>Todavía no hay empresas registradas.</p>
+            <div className="crm-toolbar-actions">
               <button type="button" className="btn btn-primary" onClick={() => setCompanyEditorOpen(true)}>
-                + Añadir la primera empresa
+                + Nueva empresa
               </button>
             </div>
-          )}
+          </div>
+
+          <div className="crm-table-wrap">
+            <table className="crm-table">
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Sector</th>
+                  <th>NIF</th>
+                  <th>Empleados</th>
+                  <th>Sitio web</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="crm-table-empty">
+                      Cargando...
+                    </td>
+                  </tr>
+                ) : filteredCompanies.length ? (
+                  filteredCompanies.map((company) => (
+                    <tr key={company.id}>
+                      <td>
+                        <Link href={`/empresas/${company.id}`} className="crm-table-link">
+                          <EntityLogo name={company.nombre} logoUrl={company.logo_url} size="sm" />
+                          <span>{company.nombre}</span>
+                        </Link>
+                      </td>
+                      <td>
+                        {company.sector ? (
+                          <span className="company-sector">{company.sector}</span>
+                        ) : (
+                          <span className="crm-table-muted">—</span>
+                        )}
+                      </td>
+                      <td className="crm-table-muted">{company.nif || "—"}</td>
+                      <td className="crm-table-muted">{employeeCountByCompany.get(company.id) ?? 0}</td>
+                      <td className="crm-table-muted">
+                        {company.sitio_web ? (
+                          <a
+                            href={
+                              company.sitio_web.startsWith("http")
+                                ? company.sitio_web
+                                : `https://${company.sitio_web}`
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {company.sitio_web.replace(/^https?:\/\//, "")}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="crm-table-empty">
+                      {companiesSearch.trim()
+                        ? "Ninguna empresa coincide con la búsqueda"
+                        : "Todavía no hay empresas registradas."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 
@@ -693,8 +804,11 @@ function HomeContent() {
       {employeeEditorOpen && (
         <EmployeeEditor
           employee={null}
-          companies={empresaRecords}
-          existingEmails={employeeRecords.filter((employee) => employee.email).map((employee) => employee.email as string)}
+          mode="contact"
+          companies={empresaRecords.map((company) => ({ id: company.id, nombre: company.nombre }))}
+          existingEmails={employeeRecords
+            .filter((employee) => employee.email)
+            .map((employee) => employee.email as string)}
           saving={saving}
           onSave={handleSaveEmployee}
           onClose={() => setEmployeeEditorOpen(false)}

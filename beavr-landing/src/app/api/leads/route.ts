@@ -8,10 +8,27 @@ type LeadPayload = {
   company?: unknown;
   projectType?: unknown;
   details?: unknown;
+  website?: unknown;
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const projectTypes = new Set(["ui-design", "frontend", "website", "full"]);
+const limits = { name: 120, email: 254, company: 160, details: 4000 };
+
+// Límite básico por IP (5 envíos / 10 min). En memoria: sirve de freno, no sustituye a un rate limit persistente.
+const hits = new Map<string, number[]>();
+function tooManyRequests(ip: string) {
+  const now = Date.now();
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < 600_000);
+  recent.push(now);
+  hits.set(ip, recent);
+  if (hits.size > 500) {
+    for (const [key, times] of hits) {
+      if (times.every((t) => now - t >= 600_000)) hits.delete(key);
+    }
+  }
+  return recent.length > 5;
+}
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -86,6 +103,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // Honeypot: los bots rellenan este campo oculto; respondemos "ok" sin guardar nada.
+  if (text(body.website)) return NextResponse.json({ ok: true });
+
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (tooManyRequests(ip)) {
+    return NextResponse.json(
+      { error: "Has enviado varios mensajes seguidos. Inténtalo de nuevo en unos minutos." },
+      { status: 429 },
+    );
+  }
+
   const name = text(body.name);
   const email = text(body.email).toLowerCase();
   const company = text(body.company);
@@ -97,6 +125,15 @@ export async function POST(request: Request) {
       { error: "Completa nombre, email, tipo de proyecto y detalles." },
       { status: 400 },
     );
+  }
+
+  if (
+    name.length > limits.name ||
+    email.length > limits.email ||
+    company.length > limits.company ||
+    details.length > limits.details
+  ) {
+    return NextResponse.json({ error: "Alguno de los campos es demasiado largo." }, { status: 400 });
   }
 
   if (!emailPattern.test(email)) {

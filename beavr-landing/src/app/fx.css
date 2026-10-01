@@ -1,0 +1,59 @@
+/* Capa visual: cabecera, titular, aurora, marquesina, spotlight y contacto oscuro */
+.fx-progress{position:fixed;inset:0 0 auto 0;z-index:60;height:3px;background:linear-gradient(90deg,var(--beavr-accent),#f2a67f);transform:scaleX(0);transform-origin:left;pointer-events:none}
+
+.site-header{position:fixed;transition:background .35s ease,box-shadow .35s ease,backdrop-filter .35s}
+.site-header .page-shell{transition:padding .35s ease}
+.site-header.is-scrolled{background:rgba(250,252,251,.82);backdrop-filter:blur(14px) saturate(1.4);box-shadow:0 1px 0 var(--beavr-line),0 10px 30px rgba(18,56,71,.06)}
+.site-header.is-scrolled .page-shell{padding-block:.6rem}
+.nav-link{position:relative}
+.nav-link::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:2px;border-radius:2px;background:var(--beavr-accent);transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.22,1,.36,1)}
+.nav-link:hover::after{transform:scaleX(1)}
+
+/* Titular: palabra a palabra al cargar (el momento principal de la página) */
+.hw{display:inline-block;overflow:hidden;padding-bottom:.14em;margin-bottom:-.14em;vertical-align:top}
+.hw>span{display:inline-block;transform:translateY(112%) rotate(4deg);transform-origin:left bottom;animation:hw-up .9s cubic-bezier(.22,1,.36,1) calc(.15s + var(--w) * .09s) forwards}
+@keyframes hw-up{to{transform:none}}
+
+/* Aurora detrás del hero */
+.hero-canvas{isolation:isolate}
+.hero-canvas::before{content:"";position:absolute;z-index:-1;width:90vmax;height:90vmax;left:50%;top:40%;translate:-50% -50%;opacity:.55;pointer-events:none;
+  background:conic-gradient(from 0deg,rgba(224,122,79,.28),rgba(42,95,117,.22),rgba(242,166,127,.2),rgba(26,74,94,.18),rgba(224,122,79,.28));
+  filter:blur(90px);animation:aurora 28s linear infinite}
+@keyframes aurora{to{rotate:360deg}}
+
+/* Botones: brillo que cruza al pasar el cursor */
+.btn-accent{position:relative;overflow:hidden}
+.btn-accent::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-120%)}
+.btn-accent:hover::after{transform:translateX(120%);transition:transform .7s ease}
+
+/* Marquesina de capacidades */
+.marquee{overflow:hidden;background:var(--beavr-blue-deep);color:#fff;padding-block:1.05rem;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.marquee-track{display:flex;width:max-content;animation:marquee 38s linear infinite}
+.marquee:hover .marquee-track{animation-play-state:paused}
+.marquee-group{display:flex;align-items:center;flex:none}
+.marquee-group span{font-family:var(--font-display),sans-serif;font-size:clamp(1.05rem,2vw,1.4rem);font-weight:600;white-space:nowrap;padding-inline:1.6rem;display:inline-flex;align-items:center;gap:3.2rem}
+.marquee-group span::after{content:"";width:9px;height:9px;background:var(--beavr-accent);rotate:45deg;border-radius:2px}
+@keyframes marquee{to{transform:translateX(-50%)}}
+
+/* Tarjetas y formulario: foco de luz con el cursor */
+.product-card-inner{--sx:-999px;--sy:-999px;background:radial-gradient(280px circle at var(--sx) var(--sy),rgba(224,122,79,.16),transparent 70%),linear-gradient(165deg,rgba(255,255,255,.92),rgba(247,250,249,.88))}
+.form-shell{--sx:-999px;--sy:-999px;background:radial-gradient(360px circle at var(--sx) var(--sy),rgba(224,122,79,.1),transparent 70%),rgba(255,255,255,.94)}
+.product-index{display:inline-grid;place-items:center;width:2.2rem;height:2.2rem;border-radius:50%;background:color-mix(in srgb,var(--beavr-accent) 12%,white);transition:background .3s,color .3s,transform .4s cubic-bezier(.34,1.56,.64,1)}
+.product-card-inner:hover .product-index{background:var(--beavr-accent);color:#fff;transform:rotate(-8deg) scale(1.08)}
+
+/* Contacto en azul profundo para dar ritmo a la página */
+.contact-section{position:relative;overflow:hidden;background:var(--beavr-blue-deep);border-top-color:transparent}
+.contact-section::before,.contact-section::after{content:"";position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;animation:orb-pulse 9s ease-in-out infinite}
+.contact-section::before{width:30rem;height:30rem;left:-8rem;top:-6rem;background:rgba(224,122,79,.3)}
+.contact-section::after{width:26rem;height:26rem;right:-6rem;bottom:-8rem;background:rgba(42,95,117,.7);animation-delay:-4s}
+.contact-section .page-shell{position:relative;z-index:1}
+.contact-section .section-title{color:#fff}
+.contact-section .section-lead{color:rgba(255,255,255,.72)}
+.contact-section .contact-points li{color:rgba(255,255,255,.88)}
+.contact-section .form-shell{border-color:rgba(255,255,255,.18);box-shadow:0 30px 70px rgba(0,0,0,.3)}
+
+@media (prefers-reduced-motion:reduce){
+  .hw>span{animation:none;transform:none}
+  .hero-canvas::before,.marquee-track,.contact-section::before,.contact-section::after{animation:none!important}
+  .btn-accent:hover::after{transition:none}
+}

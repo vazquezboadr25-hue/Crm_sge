@@ -11,7 +11,7 @@ import {
 } from "@/components/CompanyDialogs";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EntityLogo } from "@/components/EntityLogo";
-import type { Employee } from "@/components/EmployeeDialogs";
+import { EmployeeEditor, type Employee, type EmployeeFormValues } from "@/components/EmployeeDialogs";
 import { deleteCompanyLogo, uploadCompanyLogo } from "@/lib/crm/companyLogo";
 import { formatPrice } from "@/lib/crm/money";
 import { STAGE_COLORS, STAGE_LABELS, normalizeStage, websiteHref, type Stage } from "@/lib/crm/stages";
@@ -43,6 +43,7 @@ export default function CompanyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [employeeEditorOpen, setEmployeeEditorOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -86,6 +87,7 @@ export default function CompanyDetailPage() {
       cargo: person.cargo ?? null,
       telefono: person.telefono ?? null,
       notas: person.notas ?? null,
+      es_interno: false,
       created_at: person.created_at,
       updated_at: person.updated_at,
     }));
@@ -217,6 +219,30 @@ export default function CompanyDetailPage() {
     router.push("/?vista=empresas");
   };
 
+  const handleSaveEmployee = async (values: EmployeeFormValues) => {
+    if (!company) return;
+    setSaving(true);
+    const { error } = await supabase.from("personas").insert({
+      nombre: values.nombre,
+      email: values.email || null,
+      empresa_id: company.id,
+      cargo: values.cargo || null,
+      telefono: values.telefono || null,
+      notas: values.notas || null,
+      es_interno: false,
+    });
+    setSaving(false);
+
+    if (error) {
+      setNotice({ type: "error", text: "No se ha podido añadir el empleado. Inténtalo de nuevo." });
+      return;
+    }
+
+    setEmployeeEditorOpen(false);
+    setNotice({ type: "success", text: `Empleado «${values.nombre}» añadido a ${company.nombre}.` });
+    load();
+  };
+
   if (loading) {
     return (
       <DashboardShell title="Empresa" subtitle="Cargando ficha">
@@ -342,6 +368,9 @@ export default function CompanyDetailPage() {
               <h3>Empleados</h3>
               <span>{employees.length}</span>
             </div>
+            <button type="button" className="btn btn-primary" onClick={() => setEmployeeEditorOpen(true)}>
+              + Nuevo empleado
+            </button>
           </div>
 
           {employees.length ? (
@@ -418,6 +447,18 @@ export default function CompanyDetailPage() {
           deleting={saving}
           onConfirm={handleDelete}
           onClose={() => setDeleteOpen(false)}
+        />
+      )}
+
+      {employeeEditorOpen && (
+        <EmployeeEditor
+          employee={null}
+          mode="contact"
+          lockedCompanyId={company.id}
+          existingEmails={employees.filter((employee) => employee.email).map((employee) => employee.email as string)}
+          saving={saving}
+          onSave={handleSaveEmployee}
+          onClose={() => setEmployeeEditorOpen(false)}
         />
       )}
     </DashboardShell>
