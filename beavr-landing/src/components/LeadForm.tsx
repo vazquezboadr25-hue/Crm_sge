@@ -162,7 +162,9 @@ export default function LeadForm() {
             <h3 className="lead-form-title">¿Qué necesitas?</h3>
 
             <div>
-              <p id="lf-project-label" className="lf-label">Tipo de proyecto</p>
+              <p id="lf-project-label" className="lf-label">
+                Tipo de proyecto <span className="lf-required" aria-hidden="true">*</span>
+              </p>
               <div className="lf-options" role="radiogroup" aria-labelledby="lf-project-label">
                 {projects.map((item) => (
                   <button
@@ -185,16 +187,26 @@ export default function LeadForm() {
             </div>
 
             <label className="block space-y-1.5">
-              <span className="lf-label">Cuéntanos el proyecto</span>
+              <span className="lf-label">
+                Cuéntanos el proyecto <span className="lf-required" aria-hidden="true">*</span>
+              </span>
               <textarea
                 className="field min-h-28 resize-y"
                 name="details"
                 value={values.details}
                 onChange={set("details")}
                 aria-invalid={Boolean(errors.details)}
-                placeholder="Qué necesitas, para quién y qué objetivo tiene."
+                aria-required="true"
+                placeholder="Ej.: App de reservas para un taller"
+                aria-describedby={errors.details ? undefined : "lf-details-help"}
               />
-              {errors.details ? <span className="lf-error" role="alert">{errors.details}</span> : null}
+              {errors.details ? (
+                <span className="lf-error" role="alert">{errors.details}</span>
+              ) : (
+                <span id="lf-details-help" className="lf-help">
+                  Qué necesitas, para quién y qué objetivo tiene.
+                </span>
+              )}
             </label>
 
           </div>
@@ -204,7 +216,9 @@ export default function LeadForm() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block space-y-1.5">
-                <span className="lf-label">Nombre</span>
+                <span className="lf-label">
+                  Nombre <span className="lf-required" aria-hidden="true">*</span>
+                </span>
                 <input
                   className="field"
                   name="name"
@@ -214,12 +228,15 @@ export default function LeadForm() {
                   value={values.name}
                   onChange={set("name")}
                   aria-invalid={Boolean(errors.name)}
-                  placeholder="Ana García"
+                  aria-required="true"
+                  placeholder="Ej.: Ana García"
                 />
                 {errors.name ? <span className="lf-error" role="alert">{errors.name}</span> : null}
               </label>
               <label className="block space-y-1.5">
-                <span className="lf-label">Email</span>
+                <span className="lf-label">
+                  Email <span className="lf-required" aria-hidden="true">*</span>
+                </span>
                 <input
                   className="field"
                   name="email"
@@ -228,14 +245,22 @@ export default function LeadForm() {
                   value={values.email}
                   onChange={set("email")}
                   aria-invalid={Boolean(errors.email)}
-                  placeholder="ana@empresa.com"
+                  aria-required="true"
+                  placeholder="Ej.: ana@empresa.com"
+                  aria-describedby={errors.email ? undefined : "lf-email-help"}
                 />
-                {errors.email ? <span className="lf-error" role="alert">{errors.email}</span> : null}
+                {errors.email ? (
+                  <span className="lf-error" role="alert">{errors.email}</span>
+                ) : (
+                  <span id="lf-email-help" className="lf-help">
+                    Te responderemos a esta dirección.
+                  </span>
+                )}
               </label>
             </div>
 
             <label className="block space-y-1.5">
-              <span className="lf-label">Empresa (opcional)</span>
+              <span className="lf-label">Empresa</span>
               <input
                 className="field"
                 name="company"
@@ -243,8 +268,9 @@ export default function LeadForm() {
                 autoComplete="organization"
                 value={values.company}
                 onChange={set("company")}
-                placeholder="Tu empresa"
+                placeholder="Ej.: Talleres Pérez"
               />
+              <span className="lf-help">Opcional.</span>
             </label>
 
             <p className="lf-privacy">Usamos tus datos solo para responderte sobre este proyecto.</p>

@@ -9,6 +9,7 @@ import {
   type Company,
   type CompanyFormValues,
 } from "@/components/CompanyDialogs";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EntityLogo } from "@/components/EntityLogo";
 import { EmployeeEditor, type Employee, type EmployeeFormValues } from "@/components/EmployeeDialogs";
@@ -165,8 +166,7 @@ export default function CompanyDetailPage() {
     if (values.logoFile) {
       try {
         logoUrl = await uploadCompanyLogo(supabase, company.id, values.logoFile);
-      } catch (uploadError) {
-        console.error("Error subiendo logo:", uploadError);
+      } catch {
         logoFailed = true;
       }
     }
@@ -216,7 +216,7 @@ export default function CompanyDetailPage() {
     }
 
     await deleteCompanyLogo(supabase, company.logo_url);
-    router.push("/?vista=empresas");
+    router.push("/?vista=clientes");
   };
 
   const handleSaveEmployee = async (values: EmployeeFormValues) => {
@@ -239,25 +239,26 @@ export default function CompanyDetailPage() {
     }
 
     setEmployeeEditorOpen(false);
-    setNotice({ type: "success", text: `Empleado «${values.nombre}» añadido a ${company.nombre}.` });
+    setNotice({ type: "success", text: `Contacto «${values.nombre}» añadido a ${company.nombre}.` });
     load();
   };
 
   if (loading) {
     return (
-      <DashboardShell title="Empresa" subtitle="Cargando ficha">
-        <div className="empty-column">Cargando...</div>
+      <DashboardShell title="Cliente" subtitle="Cargando ficha">
+        <div className="empty-column">Cargando…</div>
       </DashboardShell>
     );
   }
 
   if (notFound || !company) {
     return (
-      <DashboardShell title="Empresa" subtitle="No encontrada">
+      <DashboardShell title="Cliente" subtitle="No encontrado">
         <div className="empty-state">
-          <p>No encontramos esta empresa.</p>
-          <Link href="/?vista=empresas" className="btn btn-primary">
-            Volver a empresas
+          <strong>No encontramos este cliente</strong>
+          <p>Puede haberse eliminado o el enlace no es válido.</p>
+          <Link href="/?vista=clientes" className="btn btn-primary">
+            Volver a clientes
           </Link>
         </div>
       </DashboardShell>
@@ -265,18 +266,25 @@ export default function CompanyDetailPage() {
   }
 
   return (
-    <DashboardShell title={company.nombre} subtitle="Ficha de la empresa">
+    <DashboardShell title={company.nombre} subtitle="Ficha del cliente">
       <div className="entity-detail">
+        <Breadcrumbs
+          items={[
+            { label: "CRM", href: "/" },
+            { label: "Clientes", href: "/?vista=clientes" },
+            { label: company.nombre },
+          ]}
+        />
         <div className="entity-detail-toolbar">
-          <Link href="/?vista=empresas" className="back-link">
-            ← Volver a empresas
+          <Link href="/?vista=clientes" className="back-link">
+            ← Volver a clientes
           </Link>
           <div className="entity-detail-actions">
             <button type="button" className="btn btn-soft" onClick={() => setEditorOpen(true)}>
-              Editar
+              Editar cliente
             </button>
             <button type="button" className="btn btn-danger-soft" onClick={() => setDeleteOpen(true)}>
-              Eliminar
+              Eliminar cliente
             </button>
           </div>
         </div>
@@ -362,14 +370,14 @@ export default function CompanyDetailPage() {
           </article>
         </section>
 
-        <section className="detail-card" aria-label="Empleados de la empresa">
+        <section className="detail-card" aria-label="Contactos del cliente">
           <div className="directory-header">
             <div className="directory-title">
-              <h3>Empleados</h3>
+              <h3>Contactos</h3>
               <span>{employees.length}</span>
             </div>
             <button type="button" className="btn btn-primary" onClick={() => setEmployeeEditorOpen(true)}>
-              + Nuevo empleado
+              + Nuevo contacto
             </button>
           </div>
 
@@ -387,14 +395,20 @@ export default function CompanyDetailPage() {
               ))}
             </div>
           ) : (
-            <div className="empty-column">Esta empresa todavía no tiene empleados</div>
+            <div className="empty-state">
+              <strong>Todavía no hay contactos</strong>
+              <p>Los contactos de este cliente aparecerán aquí.</p>
+              <button type="button" className="btn btn-primary" onClick={() => setEmployeeEditorOpen(true)}>
+                Crear contacto
+              </button>
+            </div>
           )}
         </section>
 
-        <section className="detail-card" aria-label="Oportunidades de los empleados">
+        <section className="detail-card" aria-label="Oportunidades del cliente">
           <div className="directory-header">
             <div className="directory-title">
-              <h3>Oportunidades de los empleados</h3>
+              <h3>Oportunidades</h3>
               <span>{opportunities.length}</span>
             </div>
           </div>
@@ -423,7 +437,10 @@ export default function CompanyDetailPage() {
               ))}
             </div>
           ) : (
-            <div className="empty-column">Todavía no hay oportunidades de los empleados de esta empresa</div>
+            <div className="empty-state">
+              <strong>Sin oportunidades todavía</strong>
+              <p>Las negociaciones de los contactos de este cliente aparecerán aquí.</p>
+            </div>
           )}
         </section>
       </div>

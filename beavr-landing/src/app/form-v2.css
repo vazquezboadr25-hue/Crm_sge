@@ -6,7 +6,9 @@
 .lf-step-label{margin-bottom:14px;font-size:.82rem;color:var(--beavr-muted)}
 .lf-panel{animation:lf-in .45s cubic-bezier(.22,1,.36,1) both}
 @keyframes lf-in{from{opacity:0;transform:translateX(var(--lf-dir,0px)) translateY(var(--lf-y,0px))}to{opacity:1;transform:none}}
-.lf-label{font-size:.9rem;font-weight:500;color:var(--beavr-blue-deep);margin-bottom:8px;display:block}
+.lf-label{font-size:.9rem;font-weight:700;color:var(--beavr-blue-deep);margin-bottom:8px;display:block}
+.lf-required{font-weight:700;color:#c2410c}
+.lf-help{display:block;margin-top:6px;font-size:.8rem;line-height:1.4;color:var(--beavr-muted,#71717a)}
 .lf-options{display:grid;gap:10px;grid-template-columns:1fr}
 @media(min-width:640px){.lf-options{grid-template-columns:1fr 1fr}}
 .lf-option{position:relative;padding:14px 40px 14px 16px;border:1.5px solid var(--beavr-line);border-radius:14px;background:#fff;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .2s,box-shadow .25s,transform .2s}

@@ -17,8 +17,8 @@ const body = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "beavr CRM",
-  description: "CRM profesional para gestionar oportunidades, empresas y empleados.",
+  title: "beavr ERP",
+  description: "ERP beavr: módulo CRM (clientes, contactos, oportunidades) y módulo RRHH.",
   icons: {
     icon: "/logo-mark.png",
   },

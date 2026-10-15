@@ -985,8 +985,10 @@ h3 {
 
 .directory-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
   color: var(--beavr-blue-deep);
 }
@@ -1059,16 +1061,20 @@ h3 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+  align-items: start;
+  width: 100%;
 }
 
 .crm-kpi {
   background: var(--beavr-surface);
   border: 1px solid var(--beavr-line);
   border-radius: 12px;
-  padding: 16px 18px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 0;
+  height: auto;
 }
 
 .crm-kpi strong {
@@ -1393,7 +1399,12 @@ h3 {
 @media (min-width: 1100px) {
   .crm-summary {
     display: grid;
-    grid-template-rows: auto 1fr 1fr;
+    /* ProcessStrip + KPIs (altura contenido) + 2 filas de charts */
+    grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .crm-summary .crm-kpi-grid {
+    align-self: start;
   }
 }
 
@@ -1410,12 +1421,13 @@ h3 {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) minmax(min-content, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr);
     gap: 16px;
   }
 
   .crm-summary .crm-kpi-grid {
-    gap: 16px;
+    gap: 12px;
+    align-self: start;
   }
 
   .crm-summary .crm-card > :last-child {
@@ -2116,9 +2128,9 @@ h3 {
 }
 
 .form-required {
-  font-weight: 500;
-  color: var(--beavr-muted);
-  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger-solid, #c2410c);
+  font-size: 14px;
 }
 
 .form-row {
@@ -2833,4 +2845,246 @@ h3 {
   background: rgba(59, 130, 246, 0.16);
   color: #bfdbfe;
   border-color: rgba(147, 197, 253, 0.28);
+}
+
+/* RRHH */
+.rrhh-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rrhh-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rrhh-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--beavr-line);
+  background: var(--beavr-mist);
+  color: var(--beavr-blue-deep);
+}
+
+.rrhh-status-activo,
+.rrhh-status-aprobada,
+.rrhh-status-contratado {
+  background: var(--success-bg);
+  color: var(--success-fg);
+  border-color: var(--success-border);
+}
+
+.rrhh-status-baja,
+.rrhh-status-rechazada,
+.rrhh-status-descartado {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  border-color: var(--danger-border);
+}
+
+.rrhh-status-pendiente,
+.rrhh-status-en_proceso {
+  background: color-mix(in srgb, var(--beavr-mist) 65%, var(--beavr-surface));
+  color: var(--beavr-muted);
+}
+
+.rrhh-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.rrhh-inline-hint {
+  margin: 0 0 12px;
+  color: var(--beavr-muted);
+  font-size: 13px;
+}
+
+.rrhh-subheading {
+  margin: 20px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rrhh-nested-table {
+  margin-top: 8px;
+}
+
+.rrhh-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rrhh-check-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--beavr-line);
+  border-radius: 10px;
+  background: var(--beavr-surface);
+  cursor: pointer;
+}
+
+.rrhh-check-item input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--beavr-accent);
+}
+
+.rrhh-check-item .is-done {
+  text-decoration: line-through;
+  color: var(--beavr-muted);
+}
+
+.rrhh-check-item em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 12px;
+}
+
+.rrhh-eval-card {
+  cursor: default;
+}
+
+.rrhh-nota-pill {
+  background: var(--beavr-mist) !important;
+  color: var(--beavr-blue-deep) !important;
+}
+
+.form-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--beavr-muted);
+}
+
+/* ERP IA: migas, proceso comercial, empty states */
+.breadcrumbs {
+  margin: 0 0 12px;
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--beavr-muted);
+}
+
+.breadcrumbs a {
+  color: var(--beavr-muted);
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  color: var(--beavr-fg);
+  text-decoration: underline;
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--beavr-fg);
+  font-weight: 600;
+}
+
+.breadcrumbs-sep {
+  opacity: 0.5;
+}
+
+.process-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.process-strip li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--beavr-line);
+  background: var(--beavr-surface);
+  color: var(--beavr-muted);
+  font-size: 12px;
+}
+
+.process-strip .process-strip-index {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.process-strip .is-active {
+  background: var(--beavr-fg);
+  border-color: var(--beavr-fg);
+  color: var(--beavr-bg);
+}
+
+.empty-state {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 28px 20px;
+  text-align: left;
+}
+
+.empty-state strong {
+  font-size: 15px;
+  color: var(--beavr-fg);
+}
+
+.empty-state p {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--beavr-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.empty-state-action,
+.empty-state .btn {
+  margin-top: 6px;
+}
+
+.empty-state-inline {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 12px 4px;
+}
+
+.empty-state-inline strong {
+  color: var(--beavr-fg);
+}
+
+.empty-state-inline p {
+  margin: 0;
+  color: var(--beavr-muted);
+  font-size: 13px;
+}
+
+.sidebar-nav + .sidebar-section-label {
+  margin-top: 18px;
 }

@@ -8,42 +8,27 @@ import { CrmSummary } from "@/components/CrmSummary";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EmployeeEditor, type Employee, type EmployeeFormValues } from "@/components/EmployeeDialogs";
 import { EntityLogo } from "@/components/EntityLogo";
+import { ProcessStrip } from "@/components/ProcessStrip";
+import { RrhhPanel } from "@/components/rrhh/RrhhPanel";
 import { uploadCompanyLogo } from "@/lib/crm/companyLogo";
+import {
+  mapCompanyRow,
+  mapExternalContacts,
+  mapInternalStaff,
+  mapOpportunityRow,
+  type MappedOpportunity,
+} from "@/lib/crm/mapRows";
 import { formatPrice } from "@/lib/crm/money";
+import { mapAdmisionRow, type Admision, type StaffMember } from "@/lib/crm/rrhh";
 import {
   STAGE_COLORS,
   STAGE_LABELS,
   STAGE_ORDER,
-  normalizeStage,
   type Stage,
 } from "@/lib/crm/stages";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
-type Opportunity = {
-  id: string;
-  nombre: string;
-  empresa: string;
-  empresa_id: string | null;
-  persona_id: string | null;
-  proyecto: string;
-  email: string;
-  detalles: string;
-  precio: number | null;
-  estado: Stage;
-  creado_en: string;
-};
-
-type SupabaseOpportunity = {
-  id: string;
-  nombre: string;
-  empresa: string | null;
-  proyecto: string;
-  correo: string;
-  detalles: string;
-  precio: number | string | null;
-  estado: Stage | string | null;
-  creado_en: string;
-};
+type Opportunity = MappedOpportunity;
 
 type SortMode = "default" | "az" | "za";
 type EmployeeSortMode = SortMode | "company";
@@ -74,14 +59,20 @@ function formatRelative(dateIso: string) {
   return date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
 }
 
-function resolveView(vista: string | null): "summary" | "opportunities" | "people" | "companies" {
+function resolveView(
+  vista: string | null,
+): "summary" | "opportunities" | "people" | "companies" | "rrhh" {
   switch (vista) {
     case "oportunidades":
       return "opportunities";
     case "empleados":
+    case "contactos":
       return "people";
     case "empresas":
+    case "clientes":
       return "companies";
+    case "rrhh":
+      return "rrhh";
     default:
       return "summary";
   }
@@ -143,6 +134,8 @@ function HomeContent() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [empresaRecords, setEmpresaRecords] = useState<Company[]>([]);
   const [employeeRecords, setEmployeeRecords] = useState<Employee[]>([]);
+  const [staffRecords, setStaffRecords] = useState<StaffMember[]>([]);
+  const [admisionRecords, setAdmisionRecords] = useState<Admision[]>([]);
   const [loading, setLoading] = useState(true);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -159,95 +152,51 @@ function HomeContent() {
   const fetchData = async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
 
-    const [companiesResult, peopleResult, opportunitiesResult] = await Promise.all([
+    const [companiesResult, peopleResult, opportunitiesResult, admisionesResult] = await Promise.all([
       supabase.from("empresas").select("*").order("created_at", { ascending: true }),
       supabase.from("personas").select("*").order("created_at", { ascending: true }),
       supabase.from("oportunidades").select("*").order("creado_en", { ascending: false }),
+      supabase.from("rrhh_admisiones").select("*").order("created_at", { ascending: false }),
     ]);
 
-    if (companiesResult.error) {
-      console.error("Error cargando empresas:", companiesResult.error);
-    }
-
-    if (peopleResult.error) {
-      console.error("Error cargando empleados:", peopleResult.error);
-    }
-
     if (opportunitiesResult.error) {
-      console.error("Error cargando oportunidades:", opportunitiesResult.error);
       setOpportunities([]);
       setEmpresaRecords([]);
       setEmployeeRecords([]);
+      setStaffRecords([]);
+      setAdmisionRecords([]);
       if (!silent) setLoading(false);
       return;
     }
 
-    const companies = companiesResult.data ?? [];
-    const people = peopleResult.data ?? [];
-    const companyById = new Map(companies.map((company) => [company.id, company.nombre]));
+    const companies = (companiesResult.data ?? []) as Record<string, unknown>[];
+    const people = (peopleResult.data ?? []) as Record<string, unknown>[];
+    const companyById = new Map(
+      companies.map((company) => [String(company.id), String(company.nombre ?? "Sin nombre")]),
+    );
     const personById = new Map(
-      people.map((person) => [
-        person.id,
-        {
-          nombre: person.nombre ?? "Sin nombre",
-          email: person.email ?? "Sin email",
-          empresa: companyById.get(person.empresa_id) ?? "Sin empresa",
-        },
-      ]),
+      people.map((person) => {
+        const empresaId = typeof person.empresa_id === "string" ? person.empresa_id : null;
+        return [
+          String(person.id),
+          {
+            nombre: String(person.nombre ?? "Sin nombre"),
+            email: String(person.email ?? "Sin email"),
+            empresa: (empresaId && companyById.get(empresaId)) || "Sin empresa",
+          },
+        ];
+      }),
     );
 
-    setEmpresaRecords(
-      companies.map((company) => ({
-        id: company.id,
-        nombre: company.nombre ?? "Sin nombre",
-        nif: company.nif ?? null,
-        sector: company.sector ?? null,
-        sitio_web: company.sitio_web ?? null,
-        notas: company.notas ?? null,
-        logo_url: company.logo_url ?? null,
-        responsable_id: company.responsable_id ?? null,
-        created_at: company.created_at,
-        updated_at: company.updated_at,
-      })),
+    setEmpresaRecords(companies.map(mapCompanyRow));
+    setEmployeeRecords(mapExternalContacts(people));
+    setStaffRecords(mapInternalStaff(people));
+    setAdmisionRecords((admisionesResult.data ?? []).map((row) => mapAdmisionRow(row as Record<string, unknown>)));
+    setOpportunities(
+      ((opportunitiesResult.data ?? []) as Record<string, unknown>[]).map((row) =>
+        mapOpportunityRow(row, personById, companyById),
+      ),
     );
-    setEmployeeRecords(
-      people.map((person) => ({
-        id: person.id,
-        nombre: person.nombre ?? "Sin nombre",
-        email: person.email ?? null,
-        empresa_id: person.empresa_id ?? null,
-        cargo: person.cargo ?? null,
-        telefono: person.telefono ?? null,
-        notas: person.notas ?? null,
-        es_interno: Boolean(person.es_interno),
-        created_at: person.created_at,
-        updated_at: person.updated_at,
-      })),
-    );
-
-    const mapped = (opportunitiesResult.data ?? []).map(
-      (row: SupabaseOpportunity & { empresa_id?: string | null; persona_id?: string | null }) => {
-        const linkedPerson = row.persona_id ? personById.get(row.persona_id) : null;
-        const linkedCompany = row.empresa_id ? companyById.get(row.empresa_id) : null;
-        const empresa = row.empresa ?? linkedCompany ?? linkedPerson?.empresa ?? "Sin empresa";
-
-        return {
-          id: row.id,
-          nombre: linkedPerson?.nombre ?? row.nombre ?? "Sin nombre",
-          empresa,
-          empresa_id: row.empresa_id ?? null,
-          persona_id: row.persona_id ?? null,
-          proyecto: row.proyecto ?? "Sin proyecto",
-          email: linkedPerson?.email ?? row.correo ?? "Sin email",
-          detalles: row.detalles ?? "Sin detalles",
-          precio: row.precio != null ? Number(row.precio) : null,
-          estado: normalizeStage(row.estado as string | null | undefined),
-          creado_en: row.creado_en ?? new Date().toISOString(),
-        };
-      },
-    );
-
-    setOpportunities(mapped);
     if (!silent) setLoading(false);
   };
 
@@ -393,8 +342,7 @@ function HomeContent() {
 
     if (error || !data) {
       setSaving(false);
-      console.error("Error guardando empresa:", error);
-      setNotice({ type: "error", text: "No se ha podido guardar la empresa. Inténtalo de nuevo." });
+      setNotice({ type: "error", text: "No se ha podido guardar el cliente. Inténtalo de nuevo." });
       return;
     }
 
@@ -404,8 +352,7 @@ function HomeContent() {
         const logoUrl = await uploadCompanyLogo(supabase, data.id, values.logoFile);
         const { error: logoError } = await supabase.from("empresas").update({ logo_url: logoUrl }).eq("id", data.id);
         if (logoError) throw logoError;
-      } catch (logoError) {
-        console.error("Error subiendo logo:", logoError);
+      } catch {
         logoFailed = true;
       }
     }
@@ -414,8 +361,8 @@ function HomeContent() {
     setCompanyEditorOpen(false);
     setNotice(
       logoFailed
-        ? { type: "error", text: `Empresa «${values.nombre}» añadida, pero no se ha podido subir el logo.` }
-        : { type: "success", text: `Empresa «${values.nombre}» añadida.` },
+        ? { type: "error", text: `Cliente «${values.nombre}» añadido, pero no se ha podido subir el logo.` }
+        : { type: "success", text: `Cliente «${values.nombre}» añadido.` },
     );
     fetchData();
   };
@@ -434,13 +381,12 @@ function HomeContent() {
     setSaving(false);
 
     if (error) {
-      console.error("Error guardando empleado:", error);
-      setNotice({ type: "error", text: "No se ha podido guardar el empleado. Inténtalo de nuevo." });
+      setNotice({ type: "error", text: "No se ha podido guardar el contacto. Inténtalo de nuevo." });
       return;
     }
 
     setEmployeeEditorOpen(false);
-    setNotice({ type: "success", text: `Empleado «${values.nombre}» añadido.` });
+    setNotice({ type: "success", text: `Contacto «${values.nombre}» añadido.` });
     fetchData();
   };
 
@@ -468,17 +414,17 @@ function HomeContent() {
     const { error } = await supabase.from("oportunidades").update({ estado: nextStage }).eq("id", movedId);
 
     if (error) {
-      console.error("Error actualizando estado:", error);
       skipRealtimeRefresh.current = Math.max(0, skipRealtimeRefresh.current - 1);
       setOpportunities(previous);
     }
   };
 
   const titles = {
-    summary: { title: "Resumen", subtitle: "Visión general del pipeline comercial" },
-    opportunities: { title: "Oportunidades", subtitle: "Pipeline de negociaciones activas" },
-    people: { title: "Empleados", subtitle: "Contactos de las empresas" },
-    companies: { title: "Empresas", subtitle: "Cartera de cuentas y clientes" },
+    summary: { title: "Resumen", subtitle: "Cuadro de mando del módulo CRM" },
+    opportunities: { title: "Oportunidades", subtitle: "Pipeline comercial · del lead a la venta" },
+    people: { title: "Contactos", subtitle: "Personas de contacto en clientes" },
+    companies: { title: "Clientes", subtitle: "Empresas y cuentas de la cartera" },
+    rrhh: { title: "Plantilla", subtitle: "Equipo interno, admisiones y fichas RRHH" },
   } as const;
 
   const navCounts = {
@@ -486,6 +432,7 @@ function HomeContent() {
     opportunities: opportunities.length,
     people: employeeRecords.length,
     companies: empresaRecords.length,
+    rrhh: staffRecords.length,
   };
 
   return (
@@ -505,6 +452,8 @@ function HomeContent() {
 
       {activeView === "opportunities" && (
         <>
+          <ProcessStrip activeId="oportunidad" />
+
           <section className="stats-grid" aria-label="Estadísticas principales">
             <article className="stat-card">
               <div className="stat-number">{total}</div>
@@ -516,7 +465,7 @@ function HomeContent() {
             </article>
             <article className="stat-card">
               <div className="stat-number">{empresas}</div>
-              <div className="stat-label">Empresas en pipeline</div>
+              <div className="stat-label">Clientes en pipeline</div>
             </article>
             <article className="stat-card">
               <div className="stat-number">{ultima}</div>
@@ -600,8 +549,17 @@ function HomeContent() {
         </>
       )}
 
+      {activeView === "rrhh" && (
+        <RrhhPanel
+          staff={staffRecords}
+          admisiones={admisionRecords}
+          loading={loading}
+          onRefresh={() => fetchData({ silent: true })}
+        />
+      )}
+
       {activeView === "people" && (
-        <section aria-label="Empleados">
+        <section aria-label="Contactos">
           {noticeBanner}
 
           <div className="crm-toolbar">
@@ -617,20 +575,20 @@ function HomeContent() {
                   type="text"
                   value={employeesSearch}
                   onChange={(event) => setEmployeesSearch(event.target.value)}
-                  placeholder="Buscar empleado, cargo, correo o empresa..."
-                  aria-label="Buscar empleados"
+                  placeholder="Buscar contacto, cargo, correo o cliente..."
+                  aria-label="Buscar contactos"
                 />
               </div>
               <SortControls
                 value={employeesSort}
                 onChange={setEmployeesSort}
-                label="Orden de empleados"
-                extraOptions={[{ value: "company", label: "Por empresa" }]}
+                label="Orden de contactos"
+                extraOptions={[{ value: "company", label: "Por cliente" }]}
               />
             </div>
             <div className="crm-toolbar-actions">
               <button type="button" className="btn btn-primary" onClick={() => setEmployeeEditorOpen(true)}>
-                + Nuevo empleado
+                + Nuevo contacto
               </button>
             </div>
           </div>
@@ -639,8 +597,8 @@ function HomeContent() {
             <table className="crm-table">
               <thead>
                 <tr>
-                  <th>Empleado</th>
-                  <th>Empresa</th>
+                  <th>Contacto</th>
+                  <th>Cliente</th>
                   <th>Cargo</th>
                   <th>Email</th>
                   <th>Teléfono</th>
@@ -650,7 +608,7 @@ function HomeContent() {
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="crm-table-empty">
-                      Cargando...
+                      Cargando…
                     </td>
                   </tr>
                 ) : filteredEmployees.length ? (
@@ -679,9 +637,17 @@ function HomeContent() {
                 ) : (
                   <tr>
                     <td colSpan={5} className="crm-table-empty">
-                      {employeesSearch.trim()
-                        ? "Ningún empleado coincide con la búsqueda"
-                        : "Todavía no hay empleados registrados."}
+                      {employeesSearch.trim() ? (
+                        "Ningún contacto coincide con la búsqueda"
+                      ) : (
+                        <div className="empty-state-inline">
+                          <strong>Todavía no tienes contactos</strong>
+                          <p>Los contactos que crees aparecerán aquí, vinculados a un cliente.</p>
+                          <button type="button" className="btn btn-primary" onClick={() => setEmployeeEditorOpen(true)}>
+                            Crear contacto
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -692,7 +658,7 @@ function HomeContent() {
       )}
 
       {activeView === "companies" && (
-        <section aria-label="Empresas">
+        <section aria-label="Clientes">
           {noticeBanner}
 
           <div className="crm-toolbar">
@@ -708,15 +674,15 @@ function HomeContent() {
                   type="text"
                   value={companiesSearch}
                   onChange={(event) => setCompaniesSearch(event.target.value)}
-                  placeholder="Buscar empresa, NIF, sector o empleado..."
-                  aria-label="Buscar empresas"
+                  placeholder="Buscar cliente, NIF, sector o contacto..."
+                  aria-label="Buscar clientes"
                 />
               </div>
-              <SortControls value={companiesSort} onChange={setCompaniesSort} label="Orden de empresas" />
+              <SortControls value={companiesSort} onChange={setCompaniesSort} label="Orden de clientes" />
             </div>
             <div className="crm-toolbar-actions">
               <button type="button" className="btn btn-primary" onClick={() => setCompanyEditorOpen(true)}>
-                + Nueva empresa
+                + Nuevo cliente
               </button>
             </div>
           </div>
@@ -725,10 +691,10 @@ function HomeContent() {
             <table className="crm-table">
               <thead>
                 <tr>
-                  <th>Empresa</th>
+                  <th>Cliente</th>
                   <th>Sector</th>
                   <th>NIF</th>
-                  <th>Empleados</th>
+                  <th>Contactos</th>
                   <th>Sitio web</th>
                 </tr>
               </thead>
@@ -736,7 +702,7 @@ function HomeContent() {
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="crm-table-empty">
-                      Cargando...
+                      Cargando…
                     </td>
                   </tr>
                 ) : filteredCompanies.length ? (
@@ -779,9 +745,17 @@ function HomeContent() {
                 ) : (
                   <tr>
                     <td colSpan={5} className="crm-table-empty">
-                      {companiesSearch.trim()
-                        ? "Ninguna empresa coincide con la búsqueda"
-                        : "Todavía no hay empresas registradas."}
+                      {companiesSearch.trim() ? (
+                        "Ningún cliente coincide con la búsqueda"
+                      ) : (
+                        <div className="empty-state-inline">
+                          <strong>Todavía no tienes clientes</strong>
+                          <p>Las empresas que crees aparecerán aquí con sus contactos y oportunidades.</p>
+                          <button type="button" className="btn btn-primary" onClick={() => setCompanyEditorOpen(true)}>
+                            Crear cliente
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { FormField } from "@/components/FormField";
 import { CloseButton, Modal } from "@/components/Modal";
 import { STAGE_LABELS, STAGE_ORDER, type Stage } from "@/lib/crm/stages";
 import { parsePriceInput } from "@/lib/crm/money";
@@ -130,23 +131,26 @@ export function OpportunityEditor({
       </div>
 
       <form className="company-form" onSubmit={handleSubmit} noValidate>
-        <div className="form-field">
-          <label htmlFor="opp-proyecto">
-            Proyecto <span className="form-required">(obligatorio)</span>
-          </label>
+        <FormField id="opp-proyecto" label="Proyecto" required error={errors.proyecto}>
           <input
             ref={nameRef}
             id="opp-proyecto"
             type="text"
             value={values.proyecto}
             onChange={(event) => update("proyecto", event.target.value)}
+            placeholder="Ej.: App de reservas"
+            aria-required="true"
+            aria-describedby={errors.proyecto ? "opp-proyecto-error" : undefined}
             className={errors.proyecto ? "is-invalid" : ""}
           />
-          {errors.proyecto && <p className="form-error">{errors.proyecto}</p>}
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="opp-precio">Precio (€)</label>
+        <FormField
+          id="opp-precio"
+          label="Precio (€)"
+          error={errors.precio}
+          help={errors.precio ? undefined : "Importe estimado de la oportunidad."}
+        >
           <input
             id="opp-precio"
             type="text"
@@ -155,93 +159,109 @@ export function OpportunityEditor({
             onChange={(event) => update("precio", event.target.value)}
             className={errors.precio ? "is-invalid" : ""}
             placeholder="Ej.: 4500"
+            aria-describedby={errors.precio ? "opp-precio-error" : "opp-precio-help"}
           />
-          {errors.precio && <p className="form-error">{errors.precio}</p>}
-        </div>
+        </FormField>
 
         <div className="form-row">
-          <div className="form-field">
-            <label htmlFor="opp-nombre">
-              Contacto <span className="form-required">(obligatorio)</span>
-            </label>
+          <FormField
+            id="opp-nombre"
+            label="Nombre"
+            required
+            error={errors.nombre}
+            help={linkedEmployee ? "Se toma del contacto vinculado." : undefined}
+          >
             <input
               id="opp-nombre"
               type="text"
               value={contactName}
               onChange={(event) => update("nombre", event.target.value)}
               readOnly={Boolean(linkedEmployee)}
-              aria-describedby={linkedEmployee ? "opp-contacto-hint" : undefined}
+              placeholder="Ej.: Ana García"
+              aria-required="true"
+              aria-describedby={
+                errors.nombre
+                  ? "opp-nombre-error"
+                  : linkedEmployee
+                    ? "opp-nombre-help"
+                    : undefined
+              }
               className={errors.nombre ? "is-invalid" : ""}
             />
-            {linkedEmployee && (
-              <p id="opp-contacto-hint" className="form-help">
-                Se toma del empleado vinculado
-              </p>
-            )}
-            {errors.nombre && <p className="form-error">{errors.nombre}</p>}
-          </div>
-          <div className="form-field">
-            <label htmlFor="opp-correo">
-              Correo <span className="form-required">(obligatorio)</span>
-            </label>
+          </FormField>
+          <FormField id="opp-correo" label="Email" required error={errors.correo}>
             <input
               id="opp-correo"
               type="email"
               value={contactEmail}
               onChange={(event) => update("correo", event.target.value)}
               readOnly={Boolean(linkedEmployee)}
-              aria-describedby={linkedEmployee ? "opp-contacto-hint" : undefined}
+              placeholder="Ej.: ana@empresa.com"
+              aria-required="true"
+              aria-describedby={errors.correo ? "opp-correo-error" : undefined}
               className={errors.correo ? "is-invalid" : ""}
             />
-            {errors.correo && <p className="form-error">{errors.correo}</p>}
-          </div>
+          </FormField>
         </div>
 
         <div className="form-row">
-          <div className="form-field">
-            <label htmlFor="opp-empresa">Empresa</label>
-            <select id="opp-empresa" value={values.empresa_id} onChange={(event) => update("empresa_id", event.target.value)}>
-              <option value="">Sin empresa</option>
+          <FormField id="opp-empresa" label="Cliente">
+            <select
+              id="opp-empresa"
+              value={values.empresa_id}
+              onChange={(event) => update("empresa_id", event.target.value)}
+            >
+              <option value="">Sin cliente</option>
               {companies.map((company) => (
                 <option key={company.id} value={company.id}>
                   {company.nombre}
                 </option>
               ))}
             </select>
-          </div>
-          <div className="form-field">
-            <label htmlFor="opp-empleado">Empleado</label>
-            <select id="opp-empleado" value={values.persona_id} onChange={(event) => update("persona_id", event.target.value)}>
-              <option value="">Sin empleado</option>
+          </FormField>
+          <FormField
+            id="opp-empleado"
+            label="Contacto vinculado"
+            help="Persona del cliente asociada a esta oportunidad."
+          >
+            <select
+              id="opp-empleado"
+              value={values.persona_id}
+              onChange={(event) => update("persona_id", event.target.value)}
+              aria-describedby="opp-empleado-help"
+            >
+              <option value="">Sin contacto</option>
               {filteredEmployees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.nombre}
                 </option>
               ))}
             </select>
-          </div>
+          </FormField>
         </div>
 
-        <div className="form-field">
-          <label htmlFor="opp-estado">Estado</label>
-          <select id="opp-estado" value={values.estado} onChange={(event) => update("estado", event.target.value)}>
+        <FormField id="opp-estado" label="Estado">
+          <select
+            id="opp-estado"
+            value={values.estado}
+            onChange={(event) => update("estado", event.target.value)}
+          >
             {STAGE_ORDER.map((stage) => (
               <option key={stage} value={stage}>
                 {STAGE_LABELS[stage]}
               </option>
             ))}
           </select>
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="opp-detalles">Descripción</label>
+        <FormField id="opp-detalles" label="Descripción">
           <textarea
             id="opp-detalles"
             rows={4}
             value={values.detalles}
             onChange={(event) => update("detalles", event.target.value)}
           />
-        </div>
+        </FormField>
 
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose} disabled={saving}>

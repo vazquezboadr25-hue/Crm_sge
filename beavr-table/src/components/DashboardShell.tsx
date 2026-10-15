@@ -6,16 +6,19 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useTheme } from "@/components/ThemeProvider";
 
-type NavKey = "summary" | "opportunities" | "people" | "companies";
+export type NavKey = "summary" | "opportunities" | "people" | "companies" | "rrhh";
 
 const SIDEBAR_KEY = "beavr-crm-sidebar-collapsed";
 
-const NAV_ITEMS: Array<{
+type NavItem = {
   key: NavKey;
   label: string;
   href: string;
   icon: ReactNode;
-}> = [
+};
+
+/** Jerarquía ERP (skill erp): CRM = módulo comercial; RRHH = módulo interno. */
+const CRM_NAV: NavItem[] = [
   {
     key: "summary",
     label: "Resumen",
@@ -42,25 +45,9 @@ const NAV_ITEMS: Array<{
     ),
   },
   {
-    key: "people",
-    label: "Empleados",
-    href: "/?vista=empleados",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.7" />
-        <path
-          d="M5.5 19c1.2-3 3.4-4.5 6.5-4.5S17.8 16 19 19"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
     key: "companies",
-    label: "Empresas",
-    href: "/?vista=empresas",
+    label: "Clientes",
+    href: "/?vista=clientes",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M4 20V7.5L12 4l8 3.5V20" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
@@ -74,23 +61,106 @@ const NAV_ITEMS: Array<{
       </svg>
     ),
   },
+  {
+    key: "people",
+    label: "Contactos",
+    href: "/?vista=contactos",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M5.5 19c1.2-3 3.4-4.5 6.5-4.5S17.8 16 19 19"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+];
+
+const RRHH_NAV: NavItem[] = [
+  {
+    key: "rrhh",
+    label: "Plantilla",
+    href: "/?vista=rrhh",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M8 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M16 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M3.5 19c.9-2.8 2.8-4.2 5.5-4.2s4.6 1.4 5.5 4.2"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M14 14.8c1.6-.4 3-.1 4.5 1.7"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
 ];
 
 function resolveActive(pathname: string, vista: string | null): NavKey {
   if (pathname.startsWith("/empresas")) return "companies";
   if (pathname.startsWith("/empleados")) return "people";
+  if (pathname.startsWith("/rrhh")) return "rrhh";
   if (pathname.startsWith("/oportunidades")) return "opportunities";
 
   switch (vista) {
     case "oportunidades":
       return "opportunities";
     case "empleados":
+    case "contactos":
       return "people";
     case "empresas":
+    case "clientes":
       return "companies";
+    case "rrhh":
+      return "rrhh";
     default:
       return "summary";
   }
+}
+
+function NavSection({
+  label,
+  items,
+  active,
+  counts,
+}: {
+  label: string;
+  items: NavItem[];
+  active: NavKey | null;
+  counts?: Partial<Record<NavKey, number>>;
+}) {
+  return (
+    <>
+      <div className="sidebar-section-label">{label}</div>
+      <nav className="sidebar-nav" aria-label={label}>
+        {items.map((item) => {
+          const count = counts?.[item.key];
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`nav-item ${active === item.key ? "active" : ""}`}
+              title={item.label}
+              aria-current={active === item.key ? "page" : undefined}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+              {typeof count === "number" ? <span className="nav-count">{count}</span> : null}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
+  );
 }
 
 function HeaderControls() {
@@ -225,10 +295,10 @@ function DashboardShellInner({
 
   return (
     <div className={`dashboard-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
-      <aside className="sidebar" aria-label="Menú lateral">
+      <aside className="sidebar" aria-label="Menú del ERP">
         <div className="sidebar-top">
           <div className="brand-wrap">
-            <Link href="/" aria-label="Ir al inicio" className="brand-link">
+            <Link href="/" aria-label="Ir al resumen" className="brand-link">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-full.png" alt="beavr" className="brand-logo brand-logo-full" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -254,31 +324,13 @@ function DashboardShellInner({
           </button>
         </div>
 
-        <div className="sidebar-section-label">Principal</div>
-
-        <nav className="sidebar-nav" aria-label="Navegación principal">
-          {NAV_ITEMS.map((item) => {
-            const count = counts?.[item.key];
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={`nav-item ${active === item.key ? "active" : ""}`}
-                title={item.label}
-                aria-current={active === item.key ? "page" : undefined}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <span className="nav-label">{item.label}</span>
-                {typeof count === "number" ? <span className="nav-count">{count}</span> : null}
-              </Link>
-            );
-          })}
-        </nav>
+        <NavSection label="CRM" items={CRM_NAV} active={active} counts={counts} />
+        <NavSection label="RRHH" items={RRHH_NAV} active={active} counts={counts} />
 
         <div className="sidebar-foot">
           <div className="sidebar-foot-copy">
-            <div>beavr CRM</div>
-            <div>Equipo y cartera</div>
+            <div>beavr ERP</div>
+            <div>CRM · RRHH</div>
           </div>
         </div>
       </aside>
@@ -309,7 +361,7 @@ export function DashboardShell(props: {
         <div className="dashboard-shell">
           <div className="workspace">
             <main className="main-panel">
-              <div className="empty-column">Cargando...</div>
+              <div className="empty-column">Cargando…</div>
             </main>
           </div>
         </div>

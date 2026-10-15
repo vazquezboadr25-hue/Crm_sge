@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EntityLogo } from "@/components/EntityLogo";
 import {
@@ -11,21 +12,12 @@ import {
   type OpportunityFormValues,
   type OpportunityRecord,
 } from "@/components/OpportunityDialogs";
+import { formatDate } from "@/lib/crm/format";
 import { formatPrice, parsePriceInput } from "@/lib/crm/money";
 import { STAGE_COLORS, STAGE_LABELS, STAGE_ORDER, normalizeStage, type Stage } from "@/lib/crm/stages";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 const supabase = createSupabaseBrowserClient();
-
-function formatDate(dateIso: string) {
-  return new Date(dateIso).toLocaleString("es-ES", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function OpportunityDetailPage() {
   const params = useParams<{ id: string }>();
@@ -190,7 +182,7 @@ export default function OpportunityDetailPage() {
   if (loading) {
     return (
       <DashboardShell title="Oportunidad" subtitle="Cargando ficha">
-        <div className="empty-column">Cargando...</div>
+        <div className="empty-column">Cargando…</div>
       </DashboardShell>
     );
   }
@@ -199,7 +191,8 @@ export default function OpportunityDetailPage() {
     return (
       <DashboardShell title="Oportunidad" subtitle="No encontrada">
         <div className="empty-state">
-          <p>No encontramos esta oportunidad.</p>
+          <strong>No encontramos esta oportunidad</strong>
+          <p>Puede haberse eliminado o el enlace no es válido.</p>
           <Link href="/?vista=oportunidades" className="btn btn-primary">
             Volver a oportunidades
           </Link>
@@ -213,6 +206,13 @@ export default function OpportunityDetailPage() {
   return (
     <DashboardShell title={opportunity.nombre} subtitle={opportunity.proyecto}>
       <div className="entity-detail">
+        <Breadcrumbs
+          items={[
+            { label: "CRM", href: "/" },
+            { label: "Oportunidades", href: "/?vista=oportunidades" },
+            { label: opportunity.nombre },
+          ]}
+        />
         <div className="entity-detail-toolbar">
           <Link href="/?vista=oportunidades" className="back-link">
             ← Volver a oportunidades
@@ -278,11 +278,11 @@ export default function OpportunityDetailPage() {
                 </dd>
               </div>
               <div>
-                <dt>Empresa</dt>
+                <dt>Cliente</dt>
                 <dd>{company ? <Link href={`/empresas/${company.id}`}>{company.nombre}</Link> : "—"}</dd>
               </div>
               <div>
-                <dt>Empleado</dt>
+                <dt>Contacto</dt>
                 <dd>{employee ? <Link href={`/empleados/${employee.id}`}>{employee.nombre}</Link> : "—"}</dd>
               </div>
               <div>

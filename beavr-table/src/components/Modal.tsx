@@ -2,15 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 
-export function formatDate(dateIso: string) {
-  return new Date(dateIso).toLocaleString("es-ES", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+export { formatDate } from "@/lib/crm/format";
 
 export function CloseButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (

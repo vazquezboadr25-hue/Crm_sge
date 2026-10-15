@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { FormField } from "@/components/FormField";
 import { CloseButton, Modal, formatDate } from "@/components/Modal";
 
 export type Employee = {
@@ -64,7 +65,7 @@ export function EmployeeEditor({
   }, []);
 
   const isNew = employee === null;
-  const titleNoun = "empleado";
+  const titleNoun = isInternal ? "trabajador" : "contacto";
 
   const update = (field: keyof EmployeeFormValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -112,17 +113,14 @@ export function EmployeeEditor({
     <Modal titleId="employee-editor-title" onClose={onClose}>
       <div className="modal-header">
         <div>
-          <div className="detail-label">{isNew ? "Nuevo empleado" : "Editar"}</div>
-          <h3 id="employee-editor-title">{isNew ? "Añadir empleado" : employee.nombre}</h3>
+          <div className="detail-label">{isNew ? `Nuevo ${titleNoun}` : `Editar ${titleNoun}`}</div>
+          <h3 id="employee-editor-title">{isNew ? `Añadir ${titleNoun}` : employee.nombre}</h3>
         </div>
         <CloseButton label="Cerrar sin guardar" onClick={onClose} />
       </div>
 
       <form className="company-form" onSubmit={handleSubmit} noValidate>
-        <div className="form-field">
-          <label htmlFor="employee-nombre">
-            Nombre y apellidos <span className="form-required">(obligatorio)</span>
-          </label>
+        <FormField id="employee-nombre" label="Nombre" required error={errors.nombre}>
           <input
             ref={nameRef}
             id="employee-nombre"
@@ -130,20 +128,16 @@ export function EmployeeEditor({
             autoComplete="off"
             value={values.nombre}
             onChange={(event) => update("nombre", event.target.value)}
+            placeholder="Ej.: Ana García"
+            aria-required="true"
             aria-invalid={Boolean(errors.nombre)}
             aria-describedby={errors.nombre ? "employee-nombre-error" : undefined}
             className={errors.nombre ? "is-invalid" : ""}
           />
-          {errors.nombre && (
-            <p id="employee-nombre-error" className="form-error">
-              {errors.nombre}
-            </p>
-          )}
-        </div>
+        </FormField>
 
         {!isInternal && !lockedCompanyId ? (
-          <div className="form-field">
-            <label htmlFor="employee-empresa">Empresa</label>
+          <FormField id="employee-empresa" label="Cliente" error={errors.empresa_id}>
             <select
               id="employee-empresa"
               value={values.empresa_id}
@@ -151,78 +145,72 @@ export function EmployeeEditor({
               aria-invalid={Boolean(errors.empresa_id)}
               className={errors.empresa_id ? "is-invalid" : ""}
             >
-              <option value="">Sin empresa</option>
+              <option value="">Sin cliente</option>
               {companies.map((company) => (
                 <option key={company.id} value={company.id}>
                   {company.nombre}
                 </option>
               ))}
             </select>
-            {errors.empresa_id && <p className="form-error">{errors.empresa_id}</p>}
-          </div>
+          </FormField>
         ) : null}
 
-        <div className="form-field">
-          <label htmlFor="employee-cargo">Cargo</label>
+        <FormField id="employee-cargo" label="Cargo">
           <input
             id="employee-cargo"
             type="text"
             autoComplete="off"
             value={values.cargo}
             onChange={(event) => update("cargo", event.target.value)}
-            placeholder="Ej. Responsable de compras"
+            placeholder="Ej.: Responsable de compras"
           />
-        </div>
+        </FormField>
 
         <div className="form-row">
-          <div className="form-field">
-            <label htmlFor="employee-email">Correo electrónico</label>
+          <FormField
+            id="employee-email"
+            label="Email"
+            error={errors.email}
+            help={errors.email ? undefined : "Usaremos este correo para contactar."}
+          >
             <input
               id="employee-email"
               type="email"
               autoComplete="off"
               value={values.email}
               onChange={(event) => update("email", event.target.value)}
+              placeholder="Ej.: ana@empresa.com"
               aria-invalid={Boolean(errors.email)}
-              aria-describedby={errors.email ? "employee-email-error" : undefined}
+              aria-describedby={
+                errors.email ? "employee-email-error" : "employee-email-help"
+              }
               className={errors.email ? "is-invalid" : ""}
             />
-            {errors.email && (
-              <p id="employee-email-error" className="form-error">
-                {errors.email}
-              </p>
-            )}
-          </div>
+          </FormField>
 
-          <div className="form-field">
-            <label htmlFor="employee-telefono">Teléfono</label>
+          <FormField id="employee-telefono" label="Teléfono" error={errors.telefono}>
             <input
               id="employee-telefono"
               type="tel"
               autoComplete="off"
               value={values.telefono}
               onChange={(event) => update("telefono", event.target.value)}
+              placeholder="Ej.: 600 123 456"
               aria-invalid={Boolean(errors.telefono)}
               aria-describedby={errors.telefono ? "employee-telefono-error" : undefined}
               className={errors.telefono ? "is-invalid" : ""}
             />
-            {errors.telefono && (
-              <p id="employee-telefono-error" className="form-error">
-                {errors.telefono}
-              </p>
-            )}
-          </div>
+          </FormField>
         </div>
 
-        <div className="form-field">
-          <label htmlFor="employee-notas">Notas</label>
+        <FormField id="employee-notas" label="Notas">
           <textarea
             id="employee-notas"
             rows={4}
             value={values.notas}
             onChange={(event) => update("notas", event.target.value)}
           />
-        </div>
+        </FormField>
 
         {!isNew && (
           <dl className="form-dates">
@@ -242,7 +230,7 @@ export function EmployeeEditor({
             Cancelar
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? "Guardando..." : isNew ? "Añadir" : "Guardar cambios"}
+            {saving ? "Guardando…" : isNew ? `Guardar ${titleNoun}` : "Guardar cambios"}
           </button>
         </div>
       </form>

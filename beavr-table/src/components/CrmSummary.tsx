@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { CrmOutcomeChart, CrmPipelineDoughnut, CrmStageBars } from "@/components/CrmCharts";
+import { EmptyState } from "@/components/EmptyState";
+import { ProcessStrip } from "@/components/ProcessStrip";
 import { formatPrice } from "@/lib/crm/money";
 import { STAGE_COLORS, STAGE_LABELS, STAGE_ORDER, type Stage } from "@/lib/crm/stages";
 
@@ -51,10 +53,12 @@ export function CrmSummary({
   const wonValue = sumPrice(opportunities.filter((opp) => opp.estado === "won"));
 
   return (
-    <section className="summary-page crm-summary" aria-label="Resumen general">
+    <section className="summary-page crm-summary" aria-label="Cuadro de mando CRM">
+      <ProcessStrip activeId="oportunidad" />
+
       <div className="crm-kpi-grid">
         <article className="crm-kpi">
-          <span className="crm-kpi-label">Negociaciones</span>
+          <span className="crm-kpi-label">Oportunidades</span>
           <strong>{total}</strong>
           <small>
             {abiertas} abiertas · {cerradas} cerradas
@@ -71,9 +75,9 @@ export function CrmSummary({
           <small>De {cerradas || 0} cerradas</small>
         </article>
         <article className="crm-kpi">
-          <span className="crm-kpi-label">Cartera</span>
+          <span className="crm-kpi-label">Clientes</span>
           <strong>{companyCount}</strong>
-          <small>{employeeCount} empleados</small>
+          <small>{employeeCount} contactos</small>
         </article>
       </div>
 
@@ -83,9 +87,17 @@ export function CrmSummary({
             <h3>Embudo por estado</h3>
           </div>
           {loading ? (
-            <div className="empty-column">Cargando...</div>
+            <div className="empty-column">Cargando…</div>
           ) : total === 0 ? (
-            <div className="empty-column">Todavía no hay negociaciones</div>
+            <EmptyState
+              title="Todavía no hay oportunidades"
+              description="Cuando crees negociaciones, el embudo mostrará cada fase del pipeline."
+              action={
+                <Link href="/?vista=oportunidades" className="btn btn-primary">
+                  Ir a oportunidades
+                </Link>
+              }
+            />
           ) : (
             <CrmStageBars counts={counts} />
           )}
@@ -96,9 +108,9 @@ export function CrmSummary({
             <h3>Distribución por estado</h3>
           </div>
           {loading ? (
-            <div className="empty-column">Cargando...</div>
+            <div className="empty-column">Cargando…</div>
           ) : total === 0 ? (
-            <div className="empty-column">Sin datos para mostrar</div>
+            <EmptyState title="Sin datos" description="La distribución aparecerá cuando haya oportunidades." />
           ) : (
             <CrmPipelineDoughnut
               values={counts}
@@ -116,7 +128,7 @@ export function CrmSummary({
           </div>
           <div className="crm-outcome">
             {loading ? (
-              <div className="empty-column">Cargando...</div>
+              <div className="empty-column">Cargando…</div>
             ) : (
               <CrmOutcomeChart ganadas={ganadas} perdidas={perdidas} winRate={winRate} />
             )}
@@ -135,14 +147,14 @@ export function CrmSummary({
 
         <article className="detail-card crm-card crm-recent-card">
           <div className="crm-card-header">
-            <h3>Últimas negociaciones</h3>
+            <h3>Últimas oportunidades</h3>
             <Link href="/?vista=oportunidades" className="back-link">
               Ver todas →
             </Link>
           </div>
 
           {loading ? (
-            <div className="empty-column">Cargando...</div>
+            <div className="empty-column">Cargando…</div>
           ) : opportunities.length ? (
             <div className="crm-recent-list">
               {opportunities.slice(0, RECENT_LIMIT).map((opp) => (
@@ -165,7 +177,15 @@ export function CrmSummary({
               ))}
             </div>
           ) : (
-            <div className="empty-column">No hay oportunidades todavía</div>
+            <EmptyState
+              title="No hay oportunidades todavía"
+              description="Las que crees aparecerán aquí con su fase e importe."
+              action={
+                <Link href="/?vista=oportunidades" className="btn btn-primary">
+                  Abrir pipeline
+                </Link>
+              }
+            />
           )}
         </article>
       </div>

@@ -123,29 +123,35 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-field">
-              <label htmlFor="auth-email">Correo</label>
+              <label htmlFor="auth-email">
+                Email <span className="form-required" aria-hidden="true"> *</span>
+              </label>
               <input
                 id="auth-email"
                 type="email"
                 autoComplete="email"
                 required
+                aria-required="true"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="tu@beavr.com"
+                placeholder="Ej.: tu@beavr.com"
               />
             </div>
             <div className="form-field">
-              <label htmlFor="auth-password">Contraseña</label>
+              <label htmlFor="auth-password">
+                Contraseña <span className="form-required" aria-hidden="true"> *</span>
+              </label>
               <input
                 id="auth-password"
                 type="password"
                 autoComplete="current-password"
                 required
+                aria-required="true"
                 minLength={6}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="••••••••"
               />
+              <p className="form-help">Mínimo 6 caracteres.</p>
             </div>
 
             {error ? <p className="form-error">{error}</p> : null}

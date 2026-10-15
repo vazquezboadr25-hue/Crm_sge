@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { Company } from "@/components/CompanyDialogs";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DashboardShell } from "@/components/DashboardShell";
 import {
   DeleteEmployeeDialog,
@@ -175,24 +176,25 @@ export default function EmployeeDetailPage() {
       return;
     }
 
-    router.push("/?vista=empleados");
+    router.push("/?vista=contactos");
   };
 
   if (loading) {
     return (
-      <DashboardShell title="Empleado" subtitle="Cargando ficha">
-        <div className="empty-column">Cargando...</div>
+      <DashboardShell title="Contacto" subtitle="Cargando ficha">
+        <div className="empty-column">Cargando…</div>
       </DashboardShell>
     );
   }
 
   if (notFound || !employee) {
     return (
-      <DashboardShell title="Empleado" subtitle="No encontrado">
+      <DashboardShell title="Contacto" subtitle="No encontrado">
         <div className="empty-state">
-          <p>No encontramos este empleado.</p>
-          <Link href="/?vista=empleados" className="btn btn-primary">
-            Volver a empleados
+          <strong>No encontramos este contacto</strong>
+          <p>Puede haberse eliminado o el enlace no es válido.</p>
+          <Link href="/?vista=contactos" className="btn btn-primary">
+            Volver a contactos
           </Link>
         </div>
       </DashboardShell>
@@ -200,18 +202,25 @@ export default function EmployeeDetailPage() {
   }
 
   return (
-    <DashboardShell title={employee.nombre} subtitle="Ficha del empleado">
+    <DashboardShell title={employee.nombre} subtitle="Ficha del contacto">
       <div className="entity-detail">
+        <Breadcrumbs
+          items={[
+            { label: "CRM", href: "/" },
+            { label: "Contactos", href: "/?vista=contactos" },
+            { label: employee.nombre },
+          ]}
+        />
         <div className="entity-detail-toolbar">
-          <Link href="/?vista=empleados" className="back-link">
-            ← Volver a empleados
+          <Link href="/?vista=contactos" className="back-link">
+            ← Volver a contactos
           </Link>
           <div className="entity-detail-actions">
             <button type="button" className="btn btn-soft" onClick={() => setEditorOpen(true)}>
-              Editar
+              Editar contacto
             </button>
             <button type="button" className="btn btn-danger-soft" onClick={() => setDeleteOpen(true)}>
-              Eliminar
+              Eliminar contacto
             </button>
           </div>
         </div>
@@ -225,7 +234,7 @@ export default function EmployeeDetailPage() {
           </div>
         )}
 
-        <section className="entity-hero" aria-label="Datos del empleado">
+        <section className="entity-hero" aria-label="Datos del contacto">
           <EntityLogo name={employee.nombre} size="lg" />
           <div className="entity-hero-copy">
             <h2>{employee.nombre}</h2>
@@ -238,7 +247,7 @@ export default function EmployeeDetailPage() {
             <h3>Datos</h3>
             <dl className="detail-facts">
               <div>
-                <dt>Empresa</dt>
+                <dt>Cliente</dt>
                 <dd>
                   {company ? <Link href={`/empresas/${company.id}`}>{company.nombre}</Link> : "—"}
                 </dd>
@@ -272,7 +281,7 @@ export default function EmployeeDetailPage() {
           </article>
         </section>
 
-        <section className="detail-card" aria-label="Oportunidades del empleado">
+        <section className="detail-card" aria-label="Oportunidades del contacto">
           <div className="directory-header">
             <div className="directory-title">
               <h3>Oportunidades</h3>
@@ -302,7 +311,10 @@ export default function EmployeeDetailPage() {
               ))}
             </div>
           ) : (
-            <div className="empty-column">Este empleado todavía no tiene oportunidades</div>
+            <div className="empty-state">
+              <strong>Sin oportunidades todavía</strong>
+              <p>Las negociaciones de este contacto aparecerán aquí.</p>
+            </div>
           )}
         </section>
       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { EntityLogo } from "@/components/EntityLogo";
+import { FormField } from "@/components/FormField";
 import { CloseButton, Modal, formatDate } from "@/components/Modal";
 import { validateLogoFile } from "@/lib/crm/companyLogo";
 
@@ -147,15 +148,23 @@ export function CompanyEditor({
     <Modal titleId="company-editor-title" onClose={onClose}>
       <div className="modal-header">
         <div>
-          <div className="detail-label">{isNew ? "Nueva empresa" : "Editar empresa"}</div>
-          <h3 id="company-editor-title">{isNew ? "Añadir una empresa" : company.nombre}</h3>
+          <div className="detail-label">{isNew ? "Nuevo cliente" : "Editar cliente"}</div>
+          <h3 id="company-editor-title">{isNew ? "Añadir un cliente" : company.nombre}</h3>
         </div>
         <CloseButton label="Cerrar sin guardar" onClick={onClose} />
       </div>
 
       <form className="company-form" onSubmit={handleSubmit} noValidate>
-        <div className="form-field">
-          <label htmlFor="company-logo">Logo de la empresa</label>
+        <FormField
+          id="company-logo"
+          label="Logo de la empresa"
+          error={errors.logo}
+          help={
+            errors.logo
+              ? undefined
+              : "PNG, JPG, WEBP o SVG de hasta 2 MB. Si no subes ninguno, se muestran las iniciales."
+          }
+        >
           <div className="logo-field">
             <EntityLogo name={values.nombre || company?.nombre || "Empresa"} size="lg" logoUrl={currentLogo} />
             <div className="logo-field-actions">
@@ -185,54 +194,37 @@ export function CompanyEditor({
                   </button>
                 )}
               </div>
-              {errors.logo ? (
-                <p id="company-logo-error" className="form-error" role="alert">
-                  {errors.logo}
-                </p>
-              ) : (
-                <p id="company-logo-help" className="form-help">
-                  PNG, JPG, WEBP o SVG de hasta 2 MB. Si no subes ninguno, se muestran las iniciales.
-                </p>
-              )}
             </div>
           </div>
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="company-nombre">
-            Nombre de la empresa <span className="form-required">(obligatorio)</span>
-          </label>
+        <FormField id="company-nombre" label="Nombre" required error={errors.nombre}>
           <input
             ref={nameRef}
             id="company-nombre"
             type="text"
             value={values.nombre}
             onChange={(event) => update("nombre", event.target.value)}
-            placeholder="Ej.: Panadería López"
+            placeholder="Ej.: Talleres Pérez"
+            aria-required="true"
             aria-invalid={Boolean(errors.nombre)}
             aria-describedby={errors.nombre ? "company-nombre-error" : undefined}
             className={errors.nombre ? "is-invalid" : ""}
           />
-          {errors.nombre && (
-            <p id="company-nombre-error" className="form-error">
-              {errors.nombre}
-            </p>
-          )}
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="company-nif">NIF</label>
+        <FormField id="company-nif" label="NIF" help="Identificación fiscal del cliente.">
           <input
             id="company-nif"
             type="text"
             autoComplete="off"
             value={values.nif}
             onChange={(event) => update("nif", event.target.value)}
+            placeholder="Ej.: B12345678"
           />
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="company-sector">Sector</label>
+        <FormField id="company-sector" label="Sector" help="A qué se dedica la empresa.">
           <input
             id="company-sector"
             type="text"
@@ -240,14 +232,11 @@ export function CompanyEditor({
             value={values.sector}
             onChange={(event) => update("sector", event.target.value)}
             aria-describedby="company-sector-help"
+            placeholder="Ej.: Hostelería"
           />
-          <p id="company-sector-help" className="form-help">
-            A qué se dedica la empresa.
-          </p>
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="company-web">Página web</label>
+        <FormField id="company-web" label="Página web" error={errors.sitio_web}>
           <input
             id="company-web"
             type="text"
@@ -255,26 +244,36 @@ export function CompanyEditor({
             autoComplete="off"
             value={values.sitio_web}
             onChange={(event) => update("sitio_web", event.target.value)}
+            placeholder="Ej.: www.tallerperez.es"
             aria-invalid={Boolean(errors.sitio_web)}
             aria-describedby={errors.sitio_web ? "company-web-error" : undefined}
             className={errors.sitio_web ? "is-invalid" : ""}
           />
-          {errors.sitio_web && (
-            <p id="company-web-error" className="form-error">
-              {errors.sitio_web}
-            </p>
-          )}
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="company-responsable">Responsable de comunicación con beavr</label>
+        <FormField
+          id="company-responsable"
+          label="Responsable de comunicación con beavr"
+          error={errors.responsable_id}
+          help={
+            errors.responsable_id
+              ? undefined
+              : employees.length
+                ? "Persona de la empresa que habla con beavr."
+                : isNew
+                  ? "Podrás elegirlo cuando el cliente tenga contactos."
+                  : "Añade contactos al cliente para poder elegir responsable."
+          }
+        >
           <select
             id="company-responsable"
             value={values.responsable_id}
             onChange={(event) => update("responsable_id", event.target.value)}
             disabled={employees.length === 0}
             aria-invalid={Boolean(errors.responsable_id)}
-            aria-describedby={errors.responsable_id ? "company-responsable-error" : "company-responsable-help"}
+            aria-describedby={
+              errors.responsable_id ? "company-responsable-error" : "company-responsable-help"
+            }
             className={errors.responsable_id ? "is-invalid" : ""}
           >
             <option value="">Sin responsable</option>
@@ -284,31 +283,21 @@ export function CompanyEditor({
               </option>
             ))}
           </select>
-          {errors.responsable_id ? (
-            <p id="company-responsable-error" className="form-error">
-              {errors.responsable_id}
-            </p>
-          ) : (
-            <p id="company-responsable-help" className="form-help">
-              {employees.length
-                ? "Persona de la empresa que habla con beavr."
-                : isNew
-                  ? "Podrás elegirlo cuando la empresa tenga empleados."
-                  : "Añade empleados a la empresa para poder elegir responsable."}
-            </p>
-          )}
-        </div>
+        </FormField>
 
-        <div className="form-field">
-          <label htmlFor="company-notas">Notas</label>
+        <FormField
+          id="company-notas"
+          label="Notas"
+          help="Horarios, cómo nos conocieron, preferencias…"
+        >
           <textarea
             id="company-notas"
             rows={4}
             value={values.notas}
             onChange={(event) => update("notas", event.target.value)}
-            placeholder="Cualquier información útil: horarios, cómo nos conocieron, preferencias..."
+            aria-describedby="company-notas-help"
           />
-        </div>
+        </FormField>
 
         {!isNew && (
           <dl className="form-dates">
@@ -328,7 +317,7 @@ export function CompanyEditor({
             Cancelar
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? "Guardando..." : isNew ? "Añadir empresa" : "Guardar cambios"}
+            {saving ? "Guardando…" : isNew ? "Guardar cliente" : "Guardar cambios"}
           </button>
         </div>
       </form>
@@ -371,7 +360,7 @@ export function DeleteCompanyDialog({
         <p className="modal-text">
           {employeesCount > 0 && (
             <>
-              {employeesCount === 1 ? "1 empleado" : `${employeesCount} empleados`}
+              {employeesCount === 1 ? "1 contacto" : `${employeesCount} contactos`}
               {opportunitiesCount > 0 ? " y " : " "}
             </>
           )}
